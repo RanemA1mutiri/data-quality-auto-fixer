@@ -25,98 +25,117 @@ SAMPLE_PATH = Path(__file__).parent / "data" / "samples" / "messy_customers_ar.c
 
 st.set_page_config(
     page_title="Data Quality Auto-Fixer",
-    page_icon="🧹",
+    page_icon="assets/favicon.svg",
     layout="wide",
     menu_items={"About": "https://github.com/RanemA1mutiri/data-quality-auto-fixer"},
 )
 
+
+def icon(name: str, size: int = 18) -> str:
+    """Inline monochrome stroke icon (Lucide-style). Use only inside
+    st.markdown(..., unsafe_allow_html=True)."""
+    paths = {
+        "database": '<ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/>',
+        "languages": '<path d="M4 6h9"/><path d="M8.5 4v2c0 3.5-2 6.5-5 8"/><path d="M6 10c1 2.5 3 4.5 6 5.5"/><path d="m13 20 3.5-8 3.5 8"/><path d="M14.2 17h4.6"/>',
+        "bot": '<rect x="4" y="8" width="16" height="11" rx="2.5"/><path d="M12 8V4.5"/><circle cx="12" cy="3.2" r="1.2"/><path d="M9.5 13v1.5M14.5 13v1.5"/>',
+        "user-check": '<circle cx="10" cy="8" r="3.3"/><path d="M4 20c0-3.3 2.7-6 6-6 1.1 0 2.2.3 3.1.8"/><path d="m15.5 17 2 2 3.5-3.5"/>',
+        "lock": '<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',
+        "upload": '<path d="M12 15V4"/><path d="m8 8 4-4 4 4"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/>',
+        "check": '<circle cx="12" cy="12" r="9"/><path d="m8.5 12 2.5 2.5 4.5-5"/>',
+        "download": '<path d="M12 4v11"/><path d="m8 11 4 4 4-4"/><path d="M4 19h16"/>',
+        "arrow-right": '<path d="M4 12h15"/><path d="m13 6 6 6-6 6"/>',
+    }
+    return (
+        f'<svg width="{size}" height="{size}" viewBox="0 0 24 24" fill="none" '
+        f'stroke="currentColor" stroke-width="1.75" stroke-linecap="round" '
+        f'stroke-linejoin="round" style="vertical-align:-3px;margin-inline-end:.4rem">'
+        f'{paths[name]}</svg>'
+    )
+
+
 THEME_CSS = """
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Tajawal:wght@400;500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap');
 
-html, body, [class*="css"] { font-family: 'Space Grotesk', 'Tajawal', sans-serif; }
+html, body, [class*="css"] { font-family: 'Inter', 'IBM Plex Sans Arabic', sans-serif; }
 
-.stApp {
-  background:
-    radial-gradient(60rem 30rem at 12% -5%, rgba(168,85,247,.16), transparent 60%),
-    radial-gradient(50rem 28rem at 108% 8%, rgba(6,182,212,.13), transparent 55%),
-    #0b0b14;
-}
+.stApp { background: #FBFBFD; }
 
 /* Hero */
-.dq-hero { padding: .4rem 0 1.1rem; }
-.dq-hero h1 { font-size: 2.7rem; font-weight: 700; margin: 0 0 .4rem; letter-spacing: -.02em; }
-.dq-grad {
-  background: linear-gradient(92deg, #c084fc 0%, #818cf8 45%, #22d3ee 100%);
-  -webkit-background-clip: text; background-clip: text; color: transparent;
-}
-.dq-tagline { color: #d7d7ea; font-size: 1.1rem; margin: 0 0 1rem; }
+.dq-hero { padding: .5rem 0 1.4rem; }
+.dq-hero h1 { font-size: 1.9rem; font-weight: 600; margin: 0 0 .5rem; letter-spacing: -.01em; color: #1A1D24; }
+.dq-hero h1 svg { color: #4F46E5; }
+.dq-tagline { color: #5A6472; font-size: 1.05rem; margin: 0 0 1.1rem; }
 .dq-chips { display: flex; gap: .5rem; flex-wrap: wrap; }
 .dq-chip {
-  font-size: .82rem; color: #ddddf2; padding: .32rem .8rem; border-radius: 999px;
-  border: 1px solid rgba(168,85,247,.4); background: rgba(168,85,247,.09);
+  display: inline-flex; align-items: center; font-size: .82rem; font-weight: 500;
+  color: #475467; padding: .34rem .75rem; border-radius: 6px;
+  border: 1px solid #E6E8EB; background: #F1F3F5;
 }
-.dq-steps { color: #9a9ac0; font-size: .95rem; margin-top: 1rem; }
+.dq-chip svg { color: #5A6472; }
+.dq-steps { display: flex; align-items: center; gap: .35rem; flex-wrap: wrap;
+  color: #5A6472; font-size: .92rem; margin-top: 1.1rem; }
+.dq-steps svg { color: #4F46E5; }
+.dq-steps .sep { color: #98A2B3; margin: 0 .2rem; }
 
-/* Metric cards → glass */
+/* Metric cards */
 [data-testid="stMetric"] {
-  background: linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.015));
-  border: 1px solid rgba(255,255,255,.09);
-  border-radius: 16px; padding: 1rem 1.15rem;
+  background: #FFFFFF;
+  border: 1px solid #E6E8EB;
+  border-radius: 12px; padding: 1rem 1.15rem;
+  box-shadow: 0 1px 2px rgba(16,24,40,.04), 0 1px 3px rgba(16,24,40,.06);
 }
-[data-testid="stMetricValue"] { font-weight: 700; }
+[data-testid="stMetricValue"] { font-weight: 600; color: #1A1D24; }
 
 /* Buttons */
-.stButton > button { border-radius: 12px; }
+.stButton > button { border-radius: 8px; font-weight: 500; }
 .stButton > button[kind="primary"] {
-  background: linear-gradient(92deg, #7c3aed, #06b6d4);
-  border: 0; font-weight: 700;
-  box-shadow: 0 4px 24px rgba(124,58,237,.35);
-  transition: transform .15s ease, box-shadow .15s ease;
+  background: #4F46E5; border: 0; color: #fff; font-weight: 600;
+  box-shadow: 0 1px 2px rgba(16,24,40,.08);
+  transition: background .15s ease;
 }
-.stButton > button[kind="primary"]:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 6px 32px rgba(124,58,237,.55);
-}
+.stButton > button[kind="primary"]:hover { background: #4338CA; }
 
-/* Progress bars → gradient */
-[data-testid="stProgress"] > div > div > div {
-  background: linear-gradient(90deg, #7c3aed, #22d3ee);
-}
+/* Progress bars (dimension bars) */
+[data-testid="stProgress"] > div > div > div { background: #4F46E5; }
 
 /* Expanders */
-[data-testid="stExpander"] { border: 1px solid rgba(255,255,255,.09); border-radius: 14px; }
+[data-testid="stExpander"] { border: 1px solid #E6E8EB; border-radius: 12px; background: #FFFFFF; }
 
 /* Score gauges */
-.dq-gauge-row { display: flex; gap: 1.8rem; align-items: center; flex-wrap: wrap; margin: .4rem 0 1rem; }
-.dq-gauge-wrap { display: flex; flex-direction: column; align-items: center; gap: .55rem; }
+.dq-gauge-row { display: flex; gap: 2rem; align-items: center; flex-wrap: wrap; margin: .4rem 0 1rem; }
+.dq-gauge-wrap { display: flex; flex-direction: column; align-items: center; gap: .6rem; }
 .dq-gauge {
-  width: 152px; height: 152px; border-radius: 50%;
+  width: 148px; height: 148px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
-  box-shadow: 0 0 44px rgba(124,58,237,.28);
 }
 .dq-gauge-inner {
-  width: 116px; height: 116px; border-radius: 50%; background: #0e0e1a;
+  width: 116px; height: 116px; border-radius: 50%; background: #FBFBFD;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
 }
-.dq-gauge-num { font-size: 2.35rem; font-weight: 700; line-height: 1.05; color: #ffffff; }
-.dq-gauge-sub { color: #9a9ac0; font-size: .85rem; }
-.dq-gauge-label { color: #d7d7ea; font-size: .95rem; }
-.dq-arrow { font-size: 2.1rem; color: #22d3ee; }
+.dq-gauge-num { font-size: 2.25rem; font-weight: 600; line-height: 1.05; color: #1A1D24; }
+.dq-gauge-sub { color: #98A2B3; font-size: .85rem; }
+.dq-gauge-label { color: #5A6472; font-size: .92rem; font-weight: 500; }
+.dq-arrow { color: #98A2B3; display: flex; align-items: center; }
 </style>
 """
 
-HERO_HTML = """
+HERO_HTML = f"""
 <div class="dq-hero">
-  <h1><span class="dq-grad">🧹 Data Quality Auto-Fixer</span></h1>
-  <p class="dq-tagline"><b>Turn messy data into a clean file in one minute — you approve every change.</b></p>
+  <h1>{icon("database", 26)}Data Quality Auto-Fixer</h1>
+  <p class="dq-tagline">Turn messy data into a clean file in one minute — you approve every change.</p>
   <div class="dq-chips">
-    <span class="dq-chip">🇸🇦 Arabic-first</span>
-    <span class="dq-chip">🤖 Multi-agent · Evaluator–Optimizer</span>
-    <span class="dq-chip">🧍 Human-in-the-loop</span>
-    <span class="dq-chip">🔒 The LLM never touches your data</span>
+    <span class="dq-chip">{icon("languages", 15)}Arabic-first</span>
+    <span class="dq-chip">{icon("bot", 15)}Multi-agent · Evaluator–Optimizer</span>
+    <span class="dq-chip">{icon("user-check", 15)}Human-in-the-loop</span>
+    <span class="dq-chip">{icon("lock", 15)}The LLM never touches your data</span>
   </div>
-  <div class="dq-steps">📤 Upload → 🤖 Review the AI plan → ✅ Approve → ⬇️ Download</div>
+  <div class="dq-steps">
+    {icon("upload", 16)}Upload <span class="sep">→</span>
+    {icon("bot", 16)}Review the AI plan <span class="sep">→</span>
+    {icon("check", 16)}Approve <span class="sep">→</span>
+    {icon("download", 16)}Download
+  </div>
 </div>
 """
 
@@ -127,10 +146,10 @@ st.markdown(HERO_HTML, unsafe_allow_html=True)
 def gauge_html(score: float, label: str) -> str:
     """Circular quality gauge — pure CSS conic-gradient, no external libs."""
     pct = max(0.0, min(100.0, score))
-    color = "#22c55e" if pct >= 90 else "#f59e0b" if pct >= 65 else "#ef4444"
+    color = "#1A7F5A" if pct >= 90 else "#B45309" if pct >= 65 else "#B42318"
     return (
         f'<div class="dq-gauge-wrap">'
-        f'<div class="dq-gauge" style="background: conic-gradient({color} {pct * 3.6}deg, #1d1d30 0deg);">'
+        f'<div class="dq-gauge" style="background: conic-gradient({color} {pct * 3.6}deg, #EAECF0 0deg);">'
         f'<div class="dq-gauge-inner"><div class="dq-gauge-num">{pct:.0f}</div>'
         f'<div class="dq-gauge-sub">/100</div></div></div>'
         f'<div class="dq-gauge-label">{label}</div></div>'
@@ -169,7 +188,7 @@ with col_upload:
 with col_sample:
     st.write("")
     st.write("")
-    if st.button("✨ Try with sample data (messy Arabic customers)", type="primary"):
+    if st.button("Try with sample data (messy Arabic customers)", type="primary"):
         st.session_state["use_sample"] = True
 
 if uploaded is not None:
@@ -182,7 +201,7 @@ elif st.session_state.get("use_sample"):
     file_id = "sample"
     source_name = "messy_customers_ar.csv (sample)"
 else:
-    st.info("⬆️ Upload a file — or click the sample button to see the system in action instantly.")
+    st.info("Upload a file — or click the sample button to see the system in action instantly.")
     st.stop()
 
 if df is None or df.empty:
@@ -207,10 +226,6 @@ DIM_LABELS = {
 }
 
 
-def score_badge(score: float) -> str:
-    return "🟢" if score >= 90 else "🟠" if score >= 65 else "🔴"
-
-
 def render_dimensions(dims: dict) -> None:
     for key, value in dims.items():
         st.progress(min(max(value, 0.0), 1.0), text=f"{DIM_LABELS.get(key, key)}: {value:.0%}")
@@ -233,21 +248,21 @@ with st.expander(f"Preview & detected issues — {source_name}", expanded=True):
 # --- Plan (LLM proposes; heuristic fallback keeps the demo alive) ----------
 
 st.subheader("2 · Cleaning plan (AI-proposed, you approve)")
-st.caption("🔒 Privacy: the AI sees only aggregate statistics and 5 sample rows — never your full dataset.")
+st.caption("Privacy: the AI sees only aggregate statistics and 5 sample rows — never your full dataset.")
 
 threshold = st.slider(
-    "🎯 Target quality score (for the auto-optimize loop)", 85, 100, 95,
+    "Target quality score (for the auto-optimize loop)", 85, 100, 95,
     help="The evaluator–optimizer loop keeps improving the plan until the measured score passes this threshold (max 3 iterations, best plan always kept).",
 )
-run_auto = st.button("🔁 Auto-optimize (evaluator–optimizer loop)", type="primary")
+run_auto = st.button("Auto-optimize (evaluator–optimizer loop)", type="primary")
 
 if run_auto:
     try:
-        with st.status("🔁 Evaluator–optimizer loop running...", expanded=True) as status:
+        with st.status("Evaluator–optimizer loop running...", expanded=True) as status:
             best, history, rejected = run_loop(
                 df, profile, threshold=float(threshold), on_event=status.write,
             )
-            status.update(label="🔁 Loop finished", state="complete")
+            status.update(label="Loop finished", state="complete")
         st.session_state["plan"] = best["plan"] if best else []
         st.session_state["rejected"] = rejected
         st.session_state["loop_history"] = history
@@ -261,14 +276,14 @@ if history:
     st.dataframe(pd.DataFrame(history), hide_index=True)
     if len(history) > 1:
         st.success(
-            f"📈 Score climbed {history[0]['score']:.0f} → {max(h['score'] for h in history):.0f} "
+            f"Score climbed {history[0]['score']:.0f} → {max(h['score'] for h in history):.0f} "
             f"across {len(history)} iterations — showing the winning plan below."
         )
 
 plan = st.session_state.get("plan")
 if plan is not None:
     for note in st.session_state.get("rejected", []):
-        st.error(f"🛡️ Validator: {note}")
+        st.error(f"Validator: {note}")
     if not plan:
         st.success("The planner found nothing that needs fixing — unusually clean file!")
 
@@ -281,13 +296,13 @@ if plan is not None:
     previews = st.session_state["previews"]
 
     st.write("**Review each proposed operation** — uncheck anything you don't approve:")
-    st.caption("🔎 Impact previews below assume the full plan runs in order — unchecking earlier ops may change later effects.")
+    st.caption("Impact previews below assume the full plan runs in order — unchecking earlier ops may change later effects.")
     approved = []
     for i, item in enumerate(plan):
         preview = previews[i]
         label = (
             f"`{item['op']}` on **{item.get('column') or 'whole table'}** — {item.get('reason', '')} "
-            f"· 🎯 **{preview['affected']}** affected"
+            f"· **{preview['affected']}** affected"
         )
         checked = st.checkbox(label, value=True, key=f"op_{file_id}_{i}")
         if preview["examples"]:
@@ -305,7 +320,7 @@ if plan is not None:
 
     # --- Apply (deterministic pandas only) ---------------------------------
     st.subheader("3 · Apply & download")
-    if st.button(f"✅ Apply {len(approved)} approved operations", disabled=not approved):
+    if st.button(f"Apply {len(approved)} approved operations", disabled=not approved):
         clean, log = apply_plan(df, approved)
         score_after, dims_after = quality_score(clean)
         issues_after = profile_dataframe(clean)["issues"]
@@ -316,7 +331,7 @@ if plan is not None:
             "dims_after": dims_after,
             "issues_after": issues_after,
         }
-        st.toast(f"Done! Quality improved by {score_after - score_before:+.1f} points ✨")
+        st.toast(f"Done — quality improved by {score_after - score_before:+.1f} points")
         if score_after >= threshold:
             st.balloons()
 
@@ -328,7 +343,7 @@ if result is not None:
     st.markdown(
         '<div class="dq-gauge-row">'
         + gauge_html(score_before, "Before")
-        + '<div class="dq-arrow">➜</div>'
+        + f'<div class="dq-arrow">{icon("arrow-right", 24)}</div>'
         + gauge_html(score_after, "After")
         + "</div>",
         unsafe_allow_html=True,
@@ -340,7 +355,7 @@ if result is not None:
     with st.expander("Quality dimensions after cleaning", expanded=True):
         render_dimensions(result["dims_after"])
 
-    tab_after, tab_before = st.tabs(["✨ After (changed cells highlighted)", "Before"])
+    tab_after, tab_before = st.tabs(["After (changed cells highlighted)", "Before"])
     with tab_after:
         after_head = clean.head(15).reset_index(drop=True)
         before_head = df.head(15).reset_index(drop=True)
@@ -353,7 +368,7 @@ if result is not None:
         def _style_changes(frame: pd.DataFrame) -> pd.DataFrame:
             style = pd.DataFrame("", index=frame.index, columns=frame.columns)
             style.loc[changed_mask.index, changed_mask.columns] = changed_mask.map(
-                lambda hit: "background-color: #14532d; color: #a7f3d0; font-weight: 600" if hit else ""
+                lambda hit: "background-color: #E8F5EF; color: #1A7F5A; font-weight: 600" if hit else ""
             )
             return style
 
@@ -383,30 +398,30 @@ if result is not None:
 
     d1, d2, d3, d4 = st.columns(4)
     d1.download_button(
-        "⬇️ Clean CSV",
+        "Clean CSV",
         clean.to_csv(index=False).encode("utf-8-sig"),
         file_name=f"clean_{base_name}.csv",
         mime="text/csv",
     )
     d2.download_button(
-        "⬇️ Clean Excel",
+        "Clean Excel",
         excel_buffer.getvalue(),
         file_name=f"clean_{base_name}.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     )
     d3.download_button(
-        "📄 التقرير التنفيذي (عربي)",
+        "التقرير التنفيذي (عربي)",
         report_html.encode("utf-8"),
         file_name=f"quality_report_{base_name}.html",
         mime="text/html",
     )
     d4.download_button(
-        "🧾 Audit log (JSON)",
+        "Audit log (JSON)",
         json.dumps(log, ensure_ascii=False, indent=2).encode("utf-8"),
         file_name=f"audit_log_{base_name}.json",
         mime="application/json",
     )
-    st.caption("📄 The Arabic executive report is a self-contained HTML — open it and print to PDF for management.")
+    st.caption("The Arabic executive report is a self-contained HTML — open it and print to PDF for management.")
 
     if score_after < score_before:
         st.caption(
