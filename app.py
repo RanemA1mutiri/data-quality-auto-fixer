@@ -53,103 +53,117 @@ def icon(name: str, size: int = 18) -> str:
     )
 
 
-THEME_CSS = """
+PALETTES = {
+    "Light": {
+        "bg": "#FBFBFD", "surface": "#FFFFFF", "surface2": "#F1F3F5",
+        "border": "#E6E8EB", "text": "#1A1D24", "text2": "#5A6472", "muted": "#98A2B3",
+        "primary": "#4F46E5", "primary_hover": "#4338CA",
+        "track": "#EAECF0", "gauge_inner": "#FBFBFD",
+        "hl_bg": "#E8F5EF", "hl_text": "#1A7F5A",
+        "success": "#1A7F5A", "warning": "#B45309", "danger": "#B42318",
+    },
+    "Dark": {
+        "bg": "#0D1117", "surface": "#161B22", "surface2": "#1C2128",
+        "border": "#2A2F37", "text": "#E6E8EB", "text2": "#9AA4B2", "muted": "#6E7681",
+        "primary": "#818CF8", "primary_hover": "#A5B4FC",
+        "track": "#262C36", "gauge_inner": "#0D1117",
+        "hl_bg": "#12351F", "hl_text": "#4ADE80",
+        "success": "#3FB950", "warning": "#D29922", "danger": "#F85149",
+    },
+}
+
+
+def build_css(p: dict) -> str:
+    return f"""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap');
 
-html, body, [class*="css"] { font-family: 'Inter', 'IBM Plex Sans Arabic', sans-serif; }
+html, body, [class*="css"] {{ font-family: 'Inter', 'IBM Plex Sans Arabic', sans-serif; }}
 
-.stApp { background: #FBFBFD; }
+.stApp {{ background: {p['bg']}; }}
+.stApp, .stApp p, .stApp label, .stApp li,
+.stApp h1, .stApp h2, .stApp h3, .stApp h4 {{ color: {p['text']}; }}
+[data-testid="stWidgetLabel"] p, .stCheckbox label p {{ color: {p['text']} !important; }}
+.stApp [data-testid="stCaptionContainer"] {{ color: {p['text2']}; }}
+
+/* Inputs / uploader / slider surfaces */
+[data-testid="stFileUploaderDropzone"],
+[data-baseweb="input"], [data-baseweb="select"] > div {{
+  background: {p['surface2']} !important; border-color: {p['border']} !important;
+}}
 
 /* Hero */
-.dq-hero { padding: .5rem 0 1.4rem; }
-.dq-hero h1 { font-size: 1.9rem; font-weight: 600; margin: 0 0 .5rem; letter-spacing: -.01em; color: #1A1D24; }
-.dq-hero h1 svg { color: #4F46E5; }
-.dq-tagline { color: #5A6472; font-size: 1.05rem; margin: 0 0 1.1rem; }
-.dq-chips { display: flex; gap: .5rem; flex-wrap: wrap; }
-.dq-chip {
+.dq-hero {{ padding: .5rem 0 1.4rem; }}
+.dq-hero h1 {{ font-size: 1.9rem; font-weight: 600; margin: 0 0 .5rem; letter-spacing: -.01em; color: {p['text']}; }}
+.dq-hero h1 svg {{ color: {p['primary']}; }}
+.dq-tagline {{ color: {p['text2']}; font-size: 1.05rem; margin: 0 0 1.1rem; }}
+.dq-chips {{ display: flex; gap: .5rem; flex-wrap: wrap; }}
+.dq-chip {{
   display: inline-flex; align-items: center; font-size: .82rem; font-weight: 500;
-  color: #475467; padding: .34rem .75rem; border-radius: 6px;
-  border: 1px solid #E6E8EB; background: #F1F3F5;
-}
-.dq-chip svg { color: #5A6472; }
-.dq-steps { display: flex; align-items: center; gap: .35rem; flex-wrap: wrap;
-  color: #5A6472; font-size: .92rem; margin-top: 1.1rem; }
-.dq-steps svg { color: #4F46E5; }
-.dq-steps .sep { color: #98A2B3; margin: 0 .2rem; }
+  color: {p['text2']}; padding: .34rem .75rem; border-radius: 6px;
+  border: 1px solid {p['border']}; background: {p['surface2']};
+}}
+.dq-chip svg {{ color: {p['text2']}; }}
+.dq-steps {{ display: flex; align-items: center; gap: .35rem; flex-wrap: wrap;
+  color: {p['text2']}; font-size: .92rem; margin-top: 1.1rem; }}
+.dq-steps svg {{ color: {p['primary']}; }}
+.dq-steps .sep {{ color: {p['muted']}; margin: 0 .2rem; }}
 
 /* Metric cards */
-[data-testid="stMetric"] {
-  background: #FFFFFF;
-  border: 1px solid #E6E8EB;
+[data-testid="stMetric"] {{
+  background: {p['surface']}; border: 1px solid {p['border']};
   border-radius: 12px; padding: 1rem 1.15rem;
   box-shadow: 0 1px 2px rgba(16,24,40,.04), 0 1px 3px rgba(16,24,40,.06);
-}
-[data-testid="stMetricValue"] { font-weight: 600; color: #1A1D24; }
+}}
+[data-testid="stMetricValue"] {{ font-weight: 600; color: {p['text']}; }}
 
 /* Buttons */
-.stButton > button { border-radius: 8px; font-weight: 500; }
-.stButton > button[kind="primary"] {
-  background: #4F46E5; border: 0; color: #fff; font-weight: 600;
-  box-shadow: 0 1px 2px rgba(16,24,40,.08);
-  transition: background .15s ease;
-}
-.stButton > button[kind="primary"]:hover { background: #4338CA; }
+.stButton > button {{ border-radius: 8px; font-weight: 500;
+  background: {p['surface']}; color: {p['text']}; border: 1px solid {p['border']}; }}
+.stButton > button[kind="primary"] {{
+  background: {p['primary']}; border: 0; color: #fff; font-weight: 600;
+  box-shadow: 0 1px 2px rgba(16,24,40,.08); transition: background .15s ease;
+}}
+.stButton > button[kind="primary"]:hover {{ background: {p['primary_hover']}; }}
 
-/* Progress bars (dimension bars) */
-[data-testid="stProgress"] > div > div > div { background: #4F46E5; }
+/* Progress bars */
+[data-testid="stProgress"] > div > div > div {{ background: {p['primary']}; }}
 
 /* Expanders */
-[data-testid="stExpander"] { border: 1px solid #E6E8EB; border-radius: 12px; background: #FFFFFF; }
+[data-testid="stExpander"] {{ border: 1px solid {p['border']}; border-radius: 12px; background: {p['surface']}; }}
 
 /* Score gauges */
-.dq-gauge-row { display: flex; gap: 2rem; align-items: center; flex-wrap: wrap; margin: .4rem 0 1rem; }
-.dq-gauge-wrap { display: flex; flex-direction: column; align-items: center; gap: .6rem; }
-.dq-gauge {
-  width: 148px; height: 148px; border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-}
-.dq-gauge-inner {
-  width: 116px; height: 116px; border-radius: 50%; background: #FBFBFD;
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-}
-.dq-gauge-num { font-size: 2.25rem; font-weight: 600; line-height: 1.05; color: #1A1D24; }
-.dq-gauge-sub { color: #98A2B3; font-size: .85rem; }
-.dq-gauge-label { color: #5A6472; font-size: .92rem; font-weight: 500; }
-.dq-arrow { color: #98A2B3; display: flex; align-items: center; }
+.dq-gauge-row {{ display: flex; gap: 2rem; align-items: center; flex-wrap: wrap; margin: .4rem 0 1rem; }}
+.dq-gauge-wrap {{ display: flex; flex-direction: column; align-items: center; gap: .6rem; }}
+.dq-gauge {{ width: 148px; height: 148px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center; }}
+.dq-gauge-inner {{ width: 116px; height: 116px; border-radius: 50%; background: {p['gauge_inner']};
+  display: flex; flex-direction: column; align-items: center; justify-content: center; }}
+.dq-gauge-num {{ font-size: 2.25rem; font-weight: 600; line-height: 1.05; color: {p['text']}; }}
+.dq-gauge-sub {{ color: {p['muted']}; font-size: .85rem; }}
+.dq-gauge-label {{ color: {p['text2']}; font-size: .92rem; font-weight: 500; }}
+.dq-arrow {{ color: {p['muted']}; display: flex; align-items: center; }}
 </style>
 """
 
-HERO_HTML = f"""
-<div class="dq-hero">
-  <h1>{icon("database", 26)}Data Quality Auto-Fixer</h1>
-  <p class="dq-tagline">Turn messy data into a clean file in one minute — you approve every change.</p>
-  <div class="dq-chips">
-    <span class="dq-chip">{icon("languages", 15)}Arabic-first</span>
-    <span class="dq-chip">{icon("bot", 15)}Multi-agent · Evaluator–Optimizer</span>
-    <span class="dq-chip">{icon("user-check", 15)}Human-in-the-loop</span>
-    <span class="dq-chip">{icon("lock", 15)}The LLM never touches your data</span>
-  </div>
-  <div class="dq-steps">
-    {icon("upload", 16)}Upload <span class="sep">→</span>
-    {icon("bot", 16)}Review the AI plan <span class="sep">→</span>
-    {icon("check", 16)}Approve <span class="sep">→</span>
-    {icon("download", 16)}Download
-  </div>
-</div>
-"""
 
-st.markdown(THEME_CSS, unsafe_allow_html=True)
+# --- Theme toggle (top-right) ---------------------------------------------
+_, _toggle_col = st.columns([5, 1])
+with _toggle_col:
+    _dark = st.toggle("Dark mode", value=st.session_state.get("dark_mode", False), key="dark_mode")
+PAL = PALETTES["Dark" if _dark else "Light"]
+
+st.markdown(build_css(PAL), unsafe_allow_html=True)
 st.markdown(HERO_HTML, unsafe_allow_html=True)
 
 
 def gauge_html(score: float, label: str) -> str:
     """Circular quality gauge — pure CSS conic-gradient, no external libs."""
     pct = max(0.0, min(100.0, score))
-    color = "#1A7F5A" if pct >= 90 else "#B45309" if pct >= 65 else "#B42318"
+    color = PAL["success"] if pct >= 90 else PAL["warning"] if pct >= 65 else PAL["danger"]
     return (
         f'<div class="dq-gauge-wrap">'
-        f'<div class="dq-gauge" style="background: conic-gradient({color} {pct * 3.6}deg, #EAECF0 0deg);">'
+        f'<div class="dq-gauge" style="background: conic-gradient({color} {pct * 3.6}deg, {PAL["track"]} 0deg);">'
         f'<div class="dq-gauge-inner"><div class="dq-gauge-num">{pct:.0f}</div>'
         f'<div class="dq-gauge-sub">/100</div></div></div>'
         f'<div class="dq-gauge-label">{label}</div></div>'
@@ -368,7 +382,7 @@ if result is not None:
         def _style_changes(frame: pd.DataFrame) -> pd.DataFrame:
             style = pd.DataFrame("", index=frame.index, columns=frame.columns)
             style.loc[changed_mask.index, changed_mask.columns] = changed_mask.map(
-                lambda hit: "background-color: #E8F5EF; color: #1A7F5A; font-weight: 600" if hit else ""
+                lambda hit: f"background-color: {PAL['hl_bg']}; color: {PAL['hl_text']}; font-weight: 600" if hit else ""
             )
             return style
 
