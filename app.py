@@ -247,10 +247,13 @@ c3.metric("Issues detected", len(profile["issues"]))
 with st.expander("Quality dimensions (computed, never generated)"):
     render_dimensions(dims_before)
 
-with st.expander(f"Preview & detected issues — {source_name}", expanded=True):
+with st.expander(f"Preview — {source_name}", expanded=True):
     st.dataframe(df.head(15), use_container_width=True)
-    for issue in profile["issues"]:
-        st.warning(issue)
+
+if profile["issues"]:
+    with st.expander(f"Detected issues ({len(profile['issues'])}) — click to view", expanded=False):
+        for issue in profile["issues"]:
+            st.warning(issue)
 
 # --- Plan (LLM proposes; heuristic fallback keeps the demo alive) ----------
 
@@ -312,16 +315,18 @@ if plan is not None:
             f"· **{preview['affected']}** affected"
         )
         checked = st.checkbox(label, value=True, key=f"op_{file_id}_{i}")
-        if preview["examples"]:
-            st.caption("　　e.g. " + " · ".join(f"`{e['before']}` → `{e['after']}`" for e in preview["examples"]))
-        elif preview["note"]:
-            st.caption(f"　　{preview['note']}")
         mapping = (item.get("params") or {}).get("mapping")
-        if mapping:
-            st.dataframe(
-                pd.DataFrame([{"from": k, "to": v} for k, v in mapping.items()]),
-                hide_index=True,
-            )
+        if preview["examples"] or preview["note"] or mapping:
+            with st.expander("Preview impact", expanded=False):
+                if preview["examples"]:
+                    st.caption("e.g. " + " · ".join(f"`{e['before']}` → `{e['after']}`" for e in preview["examples"]))
+                elif preview["note"]:
+                    st.caption(preview["note"])
+                if mapping:
+                    st.dataframe(
+                        pd.DataFrame([{"from": k, "to": v} for k, v in mapping.items()]),
+                        hide_index=True,
+                    )
         if checked:
             approved.append(item)
 
