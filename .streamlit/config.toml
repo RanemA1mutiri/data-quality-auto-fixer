@@ -1,6 +1,7 @@
 [theme]
-base = "dark"
-primaryColor = "#a855f7"
-backgroundColor = "#0b0b14"
-secondaryBackgroundColor = "#14141f"
-textColor = "#e8e8f0"
+base = "light"
+primaryColor = "#4F46E5"
+backgroundColor = "#FBFBFD"
+secondaryBackgroundColor = "#F1F3F5"
+textColor = "#1A1D24"
+font = "sans serif"

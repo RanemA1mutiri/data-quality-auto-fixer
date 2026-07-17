@@ -107,7 +107,7 @@ def build_report(
 </style>
 </head>
 <body>
-<h1>🧹 تقرير جودة البيانات — ملخص تنفيذي</h1>
+<h1><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#4F46E5" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></svg> تقرير جودة البيانات — ملخص تنفيذي</h1>
 <div class="meta">الملف: <span dir="ltr">{html.escape(source_name)}</span> · عدد الصفوف: {rows} · تاريخ التقرير: {generated_at}</div>
 
 <div class="cards">
