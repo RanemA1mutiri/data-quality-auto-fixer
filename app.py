@@ -96,11 +96,30 @@ if st.session_state.get("file_id") != file_id:
 score_before, dims_before = quality_score(df)
 profile = profile_dataframe(df)
 
+DIM_LABELS = {
+    "completeness": "Completeness — non-empty cells",
+    "validity": "Validity — values matching their column's target format",
+    "uniqueness": "Uniqueness — non-duplicate rows",
+    "consistency": "Consistency — text free of representation noise",
+}
+
+
+def score_badge(score: float) -> str:
+    return "🟢" if score >= 80 else "🟠" if score >= 50 else "🔴"
+
+
+def render_dimensions(dims: dict) -> None:
+    for key, value in dims.items():
+        st.progress(min(max(value, 0.0), 1.0), text=f"{DIM_LABELS.get(key, key)}: {value:.0%}")
+
+
 st.subheader("1 · Profile")
 c1, c2, c3 = st.columns(3)
-c1.metric("Quality score (before)", f"{score_before:.0f} / 100")
+c1.metric(f"{score_badge(score_before)} Quality score (before)", f"{score_before:.0f} / 100")
 c2.metric("Rows", len(df))
 c3.metric("Issues detected", len(profile["issues"]))
+with st.expander("Quality dimensions (computed, never generated)"):
+    render_dimensions(dims_before)
 
 with st.expander(f"Preview & detected issues — {source_name}", expanded=True):
     st.dataframe(df.head(15), use_container_width=True)
@@ -159,6 +178,7 @@ if plan is not None:
             "clean": clean,
             "log": log,
             "score_after": score_after,
+            "dims_after": dims_after,
             "issues_after": issues_after,
         }
 
@@ -168,11 +188,13 @@ if result is not None:
     score_after, issues_after = result["score_after"], result["issues_after"]
 
     a, b, c = st.columns(3)
-    a.metric("Quality score (after)", f"{score_after:.0f} / 100",
+    a.metric(f"{score_badge(score_after)} Quality score (after)", f"{score_after:.0f} / 100",
              delta=f"{score_after - score_before:.1f}")
     b.metric("Issues remaining", len(issues_after),
              delta=len(issues_after) - len(profile["issues"]), delta_color="inverse")
     c.metric("Cells/rows affected", sum(entry["affected"] for entry in log))
+    with st.expander("Quality dimensions after cleaning", expanded=True):
+        render_dimensions(result["dims_after"])
 
     tab_after, tab_before = st.tabs(["✨ After", "Before"])
     with tab_after:

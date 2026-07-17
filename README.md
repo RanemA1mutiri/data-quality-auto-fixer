@@ -20,7 +20,7 @@ Existing tools either **detect** problems (Great Expectations) or hand you **man
 
 Upload a messy CSV → the system profiles it, proposes cleaning transformations, **scores the result numerically**, and iterates until quality passes a threshold — with **human approval required before any change is applied**.
 
-The output is a number: **"Data quality raised from 62% → 94%"** — plus a clean file, an Arabic executive report, and a full audit log.
+The output is a number — **measured, never generated**. On the demo dataset the system raises the overall quality score from **87 → 98**, with the validity dimension jumping from **67% → 98%** (phones normalized to +966 E.164, mixed dates to ISO, amounts to real numbers). Plus: a clean file and a full audit log of every change.
 
 ## Architecture — Evaluator–Optimizer Pattern
 
@@ -44,16 +44,16 @@ flowchart TD
 
 Six standard dimensions, each measured in code and normalized to [0, 1], combined as a weighted sum:
 
-| Dimension | Formula | Default weight |
+| Dimension | Formula | Status |
 |---|---|---|
-| Completeness | 1 − (empty cells ÷ total) | 0.25 |
-| Validity | 1 − (rule/format violations ÷ checked) | 0.25 |
-| Uniqueness | 1 − (duplicate rows ÷ total) | 0.15 |
-| Consistency | 1 − (contradictions ÷ checks) | 0.15 |
-| Accuracy | 1 − (range/reference failures ÷ total) | 0.15 |
-| Timeliness | 1 − (records older than SLA ÷ total) | 0.05 |
+| Completeness | 1 − (empty cells ÷ total) | ✅ live |
+| Validity | share of values matching the column's detected target format (phone → +9665XXXXXXXX, date → ISO, numeric → real numbers) | ✅ live |
+| Uniqueness | 1 − (duplicate rows ÷ total) | ✅ live |
+| Consistency | share of text cells free of representation noise (alef variants, Hindi numerals, untrimmed whitespace) | ✅ live |
+| Accuracy | reference/range checks | Phase 3+ |
+| Timeliness | records within SLA | Phase 3+ |
 
-Non-applicable dimensions are dropped and weights renormalized. The loop stops on: threshold reached, diminishing returns (ΔDQ < 1%), iteration cap, or regression (best-so-far plan is always kept).
+Column kinds (phone / date / numeric / text) are detected deterministically from name hints + content shape — no LLM involved in scoring. Non-applicable dimensions are dropped and weights renormalized. The optimizer loop stops on: threshold reached, diminishing returns, iteration cap, or regression (best-so-far plan is always kept).
 
 ### Governance
 
@@ -87,7 +87,8 @@ Most data-quality tools break on Arabic. This system is built for it:
 
 - [x] **Phase 0** — Repo, scaffolding, architecture design
 - [x] **Phase 1** — MVP: upload (or one-click sample) → profile → LLM cleaning plan → per-op human approval → apply → download. Closed op-registry + plan validator + deterministic fallback plan + pytest suite live
-- [ ] **Phase 2** — Evaluator–optimizer loop with live quality score + validity/consistency dimensions
+- [x] **Phase 2a** — Validity & consistency dimensions with deterministic column-kind detection: cleaning now measurably raises the score (87 → 98 on the demo dataset)
+- [ ] **Phase 2b** — Full evaluator–optimizer loop with live score updates
 - [ ] **Phase 3** — Per-op dry-run preview (see affected cells before approving)
 - [ ] **Phase 4** — Arabic executive report (HTML/RTL) + audit log export
 - [ ] **Phase 5** — Polish: demo video/GIF, Saudi open-data demo, CI badge
