@@ -53,100 +53,70 @@ def icon(name: str, size: int = 18) -> str:
     )
 
 
-# --- Theme: follow Streamlit's NATIVE theme (⋮ menu → Settings → Theme) so
-# the whole app — tables and chrome included — switches reliably with zero
-# engine tampering. We only mirror the active theme into our custom surfaces. ---
-LIGHT = {
-    "base": "light", "bg": "#FBFBFD", "surface": "#FFFFFF", "surface2": "#F1F3F5",
-    "border": "#E6E8EB", "text": "#1A1D24", "text2": "#5A6472", "muted": "#98A2B3",
-    "chip_text": "#475467", "primary": "#4F46E5", "primary_hover": "#4338CA",
-    "success": "#1A7F5A", "warning": "#B45309", "danger": "#B42318",
-    "track": "#EAECF0", "gauge_inner": "#FBFBFD", "hl_bg": "#E8F5EF", "hl_text": "#1A7F5A",
-}
-DARK = {
-    "base": "dark", "bg": "#0D1117", "surface": "#161B22", "surface2": "#21262D",
-    "border": "#30363D", "text": "#E6EDF3", "text2": "#8B949E", "muted": "#7D8590",
-    "chip_text": "#8B949E", "primary": "#6366F1", "primary_hover": "#818CF8",
-    "success": "#3FB950", "warning": "#D29922", "danger": "#F85149",
-    "track": "#21262D", "gauge_inner": "#0D1117", "hl_bg": "#0E2A1B", "hl_text": "#56D364",
-}
-def _is_dark() -> bool:
-    try:
-        return st.context.theme.type == "dark"
-    except Exception:
-        return False
-
-
-IS_DARK = _is_dark()
-P = DARK if IS_DARK else LIGHT
-
-THEME_CSS = f"""
+THEME_CSS = """
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap');
 
-html, body, [class*="css"] {{ font-family: 'Inter', 'IBM Plex Sans Arabic', sans-serif; }}
+html, body, [class*="css"] { font-family: 'Inter', 'IBM Plex Sans Arabic', sans-serif; }
 
-.stApp {{ background: {P['bg']}; }}
+.stApp { background: #FBFBFD; }
 
 /* Hero */
-.dq-hero {{ padding: .5rem 0 1.4rem; }}
-.dq-hero h1 {{ font-size: 1.9rem; font-weight: 600; margin: 0 0 .5rem; letter-spacing: -.01em; color: {P['text']}; }}
-.dq-hero h1 svg {{ color: {P['primary']}; }}
-.dq-tagline {{ color: {P['text2']}; font-size: 1.05rem; margin: 0 0 1.1rem; }}
-.dq-chips {{ display: flex; gap: .5rem; flex-wrap: wrap; }}
-.dq-chip {{
+.dq-hero { padding: .5rem 0 1.4rem; }
+.dq-hero h1 { font-size: 1.9rem; font-weight: 600; margin: 0 0 .5rem; letter-spacing: -.01em; color: #1A1D24; }
+.dq-hero h1 svg { color: #4F46E5; }
+.dq-tagline { color: #5A6472; font-size: 1.05rem; margin: 0 0 1.1rem; }
+.dq-chips { display: flex; gap: .5rem; flex-wrap: wrap; }
+.dq-chip {
   display: inline-flex; align-items: center; font-size: .82rem; font-weight: 500;
-  color: {P['chip_text']}; padding: .34rem .75rem; border-radius: 6px;
-  border: 1px solid {P['border']}; background: {P['surface2']};
-}}
-.dq-chip svg {{ color: {P['text2']}; }}
-.dq-steps {{ display: flex; align-items: center; gap: .35rem; flex-wrap: wrap;
-  color: {P['text2']}; font-size: .92rem; margin-top: 1.1rem; }}
-.dq-steps svg {{ color: {P['primary']}; }}
-.dq-steps .sep {{ color: {P['muted']}; margin: 0 .2rem; }}
-
-/* Headings — full presence in both modes */
-.stApp h1, .stApp h2, .stApp h3 {{ color: {P['text']}; }}
+  color: #475467; padding: .34rem .75rem; border-radius: 6px;
+  border: 1px solid #E6E8EB; background: #F1F3F5;
+}
+.dq-chip svg { color: #5A6472; }
+.dq-steps { display: flex; align-items: center; gap: .35rem; flex-wrap: wrap;
+  color: #5A6472; font-size: .92rem; margin-top: 1.1rem; }
+.dq-steps svg { color: #4F46E5; }
+.dq-steps .sep { color: #98A2B3; margin: 0 .2rem; }
 
 /* Metric cards */
-[data-testid="stMetric"] {{
-  background: {P['surface']};
-  border: 1px solid {P['border']};
-  border-radius: 14px; padding: 1.2rem 1.35rem;
-  box-shadow: 0 1px 2px rgba(0,0,0,.14), 0 2px 6px rgba(0,0,0,.10);
-}}
-[data-testid="stMetricValue"] {{ font-weight: 700; font-size: 2.1rem; color: {P['text']}; }}
-[data-testid="stMetricLabel"] p {{ color: {P['text2']} !important; font-weight: 500; }}
+[data-testid="stMetric"] {
+  background: #FFFFFF;
+  border: 1px solid #E6E8EB;
+  border-radius: 12px; padding: 1rem 1.15rem;
+  box-shadow: 0 1px 2px rgba(16,24,40,.04), 0 1px 3px rgba(16,24,40,.06);
+}
+[data-testid="stMetricValue"] { font-weight: 600; color: #1A1D24; }
 
 /* Buttons */
-.stButton > button {{ border-radius: 8px; font-weight: 500; }}
-.stButton > button[kind="primary"] {{
-  background: {P['primary']}; border: 0; color: #fff; font-weight: 600;
-  box-shadow: 0 1px 2px rgba(0,0,0,.15);
-}}
-.stButton > button[kind="primary"]:hover {{ background: {P['primary_hover']}; }}
+.stButton > button { border-radius: 8px; font-weight: 500; }
+.stButton > button[kind="primary"] {
+  background: #4F46E5; border: 0; color: #fff; font-weight: 600;
+  box-shadow: 0 1px 2px rgba(16,24,40,.08);
+  transition: background .15s ease;
+}
+.stButton > button[kind="primary"]:hover { background: #4338CA; }
 
 /* Progress bars (dimension bars) */
-[data-testid="stProgress"] > div > div > div {{ background: {P['primary']}; }}
+[data-testid="stProgress"] > div > div > div { background: #4F46E5; }
 
 /* Expanders */
-[data-testid="stExpander"] {{ border: 1px solid {P['border']}; border-radius: 12px; background: {P['surface']}; }}
+[data-testid="stExpander"] { border: 1px solid #E6E8EB; border-radius: 12px; background: #FFFFFF; }
 
 /* Score gauges */
-.dq-gauge-row {{ display: flex; gap: 2rem; align-items: center; flex-wrap: wrap; margin: .4rem 0 1rem; }}
-.dq-gauge-wrap {{ display: flex; flex-direction: column; align-items: center; gap: .6rem; }}
-.dq-gauge {{
+.dq-gauge-row { display: flex; gap: 2rem; align-items: center; flex-wrap: wrap; margin: .4rem 0 1rem; }
+.dq-gauge-wrap { display: flex; flex-direction: column; align-items: center; gap: .6rem; }
+.dq-gauge {
   width: 148px; height: 148px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
-}}
-.dq-gauge-inner {{
-  width: 116px; height: 116px; border-radius: 50%; background: {P['bg']};
+}
+.dq-gauge-inner {
+  width: 116px; height: 116px; border-radius: 50%; background: #FBFBFD;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-}}
-.dq-gauge-num {{ font-size: 2.25rem; font-weight: 600; line-height: 1.05; color: {P['text']}; }}
-.dq-gauge-sub {{ color: {P['muted']}; font-size: .85rem; }}
-.dq-gauge-label {{ color: {P['text2']}; font-size: .92rem; font-weight: 500; }}
-.dq-arrow {{ color: {P['muted']}; display: flex; align-items: center; }}
+}
+.dq-gauge-num { font-size: 2.25rem; font-weight: 600; line-height: 1.05; color: #1A1D24; }
+.dq-gauge-sub { color: #98A2B3; font-size: .85rem; }
+.dq-gauge-label { color: #5A6472; font-size: .92rem; font-weight: 500; }
+.dq-arrow { color: #98A2B3; display: flex; align-items: center; }
 </style>
 """
 
@@ -176,10 +146,10 @@ st.markdown(HERO_HTML, unsafe_allow_html=True)
 def gauge_html(score: float, label: str) -> str:
     """Circular quality gauge — pure CSS conic-gradient, no external libs."""
     pct = max(0.0, min(100.0, score))
-    color = P["success"] if pct >= 90 else P["warning"] if pct >= 65 else P["danger"]
+    color = "#1A7F5A" if pct >= 90 else "#B45309" if pct >= 65 else "#B42318"
     return (
         f'<div class="dq-gauge-wrap">'
-        f'<div class="dq-gauge" style="background: conic-gradient({color} {pct * 3.6}deg, {P['track']} 0deg);">'
+        f'<div class="dq-gauge" style="background: conic-gradient({color} {pct * 3.6}deg, #EAECF0 0deg);">'
         f'<div class="dq-gauge-inner"><div class="dq-gauge-num">{pct:.0f}</div>'
         f'<div class="dq-gauge-sub">/100</div></div></div>'
         f'<div class="dq-gauge-label">{label}</div></div>'
@@ -398,7 +368,7 @@ if result is not None:
         def _style_changes(frame: pd.DataFrame) -> pd.DataFrame:
             style = pd.DataFrame("", index=frame.index, columns=frame.columns)
             style.loc[changed_mask.index, changed_mask.columns] = changed_mask.map(
-                lambda hit: f"background-color: {P['hl_bg']}; color: {P['hl_text']}; font-weight: 600" if hit else ""
+                lambda hit: "background-color: #E8F5EF; color: #1A7F5A; font-weight: 600" if hit else ""
             )
             return style
 
