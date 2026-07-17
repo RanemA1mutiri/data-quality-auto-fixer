@@ -153,7 +153,7 @@ st.markdown(HERO_HTML, unsafe_allow_html=True)
 def gauge_html(score: float, label: str) -> str:
     """Circular quality gauge — pure CSS conic-gradient, no external libs."""
     pct = max(0.0, min(100.0, score))
-    color = "#12A150" if pct >= 90 else "#E8850C" if pct >= 65 else "#E5484D"
+    color = "#0F8A45" if pct >= 90 else "#CC7309" if pct >= 65 else "#D13A3F"
     return (
         f'<div class="dq-gauge-wrap">'
         f'<div class="dq-gauge" style="background: conic-gradient({color} {pct * 3.6}deg, #EAECF0 0deg);">'
