@@ -86,10 +86,21 @@ html, body, [class*="css"] {{ font-family: 'Inter', 'IBM Plex Sans Arabic', sans
 [data-testid="stWidgetLabel"] p, .stCheckbox label p {{ color: {p['text']} !important; }}
 .stApp [data-testid="stCaptionContainer"] {{ color: {p['text2']}; }}
 
+/* Top header bar → transparent so it matches the app background */
+[data-testid="stHeader"] {{ background: transparent; }}
+
 /* Inputs / uploader / slider surfaces */
 [data-testid="stFileUploaderDropzone"],
 [data-baseweb="input"], [data-baseweb="select"] > div {{
   background: {p['surface2']} !important; border-color: {p['border']} !important;
+}}
+[data-testid="stFileUploaderDropzone"] > div,
+[data-testid="stFileUploaderDropzone"] small {{ color: {p['text2']} !important; }}
+/* The uploader's own "Browse/Upload" button (not a .stButton) */
+[data-testid="stFileUploaderDropzone"] button,
+[data-testid="stBaseButton-secondary"] {{
+  background: {p['surface']} !important; color: {p['text']} !important;
+  border: 1px solid {p['border']} !important;
 }}
 
 /* Hero */
