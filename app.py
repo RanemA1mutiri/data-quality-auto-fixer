@@ -31,10 +31,111 @@ st.set_page_config(
     menu_items={"About": "https://github.com/RanemA1mutiri/data-quality-auto-fixer"},
 )
 
-st.title("🧹 Data Quality Auto-Fixer")
-st.markdown("**Turn messy data into a clean file in one minute — you approve every change.**")
-st.markdown("📤 Upload → 🤖 Review the AI-proposed cleaning plan → ✅ Approve → ⬇️ Download")
-st.caption("Under the hood: a multi-agent evaluator–optimizer system. The LLM proposes; deterministic pandas executes.")
+THEME_CSS = """
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Tajawal:wght@400;500;700&display=swap');
+
+html, body, [class*="css"] { font-family: 'Space Grotesk', 'Tajawal', sans-serif; }
+
+.stApp {
+  background:
+    radial-gradient(60rem 30rem at 12% -5%, rgba(168,85,247,.16), transparent 60%),
+    radial-gradient(50rem 28rem at 108% 8%, rgba(6,182,212,.13), transparent 55%),
+    #0b0b14;
+}
+
+/* Hero */
+.dq-hero { padding: .4rem 0 1.1rem; }
+.dq-hero h1 { font-size: 2.7rem; font-weight: 700; margin: 0 0 .4rem; letter-spacing: -.02em; }
+.dq-grad {
+  background: linear-gradient(92deg, #c084fc 0%, #818cf8 45%, #22d3ee 100%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.dq-tagline { color: #d7d7ea; font-size: 1.1rem; margin: 0 0 1rem; }
+.dq-chips { display: flex; gap: .5rem; flex-wrap: wrap; }
+.dq-chip {
+  font-size: .82rem; color: #ddddf2; padding: .32rem .8rem; border-radius: 999px;
+  border: 1px solid rgba(168,85,247,.4); background: rgba(168,85,247,.09);
+}
+.dq-steps { color: #9a9ac0; font-size: .95rem; margin-top: 1rem; }
+
+/* Metric cards → glass */
+[data-testid="stMetric"] {
+  background: linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.015));
+  border: 1px solid rgba(255,255,255,.09);
+  border-radius: 16px; padding: 1rem 1.15rem;
+}
+[data-testid="stMetricValue"] { font-weight: 700; }
+
+/* Buttons */
+.stButton > button { border-radius: 12px; }
+.stButton > button[kind="primary"] {
+  background: linear-gradient(92deg, #7c3aed, #06b6d4);
+  border: 0; font-weight: 700;
+  box-shadow: 0 4px 24px rgba(124,58,237,.35);
+  transition: transform .15s ease, box-shadow .15s ease;
+}
+.stButton > button[kind="primary"]:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 32px rgba(124,58,237,.55);
+}
+
+/* Progress bars → gradient */
+[data-testid="stProgress"] > div > div > div {
+  background: linear-gradient(90deg, #7c3aed, #22d3ee);
+}
+
+/* Expanders */
+[data-testid="stExpander"] { border: 1px solid rgba(255,255,255,.09); border-radius: 14px; }
+
+/* Score gauges */
+.dq-gauge-row { display: flex; gap: 1.8rem; align-items: center; flex-wrap: wrap; margin: .4rem 0 1rem; }
+.dq-gauge-wrap { display: flex; flex-direction: column; align-items: center; gap: .55rem; }
+.dq-gauge {
+  width: 152px; height: 152px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 0 44px rgba(124,58,237,.28);
+}
+.dq-gauge-inner {
+  width: 116px; height: 116px; border-radius: 50%; background: #0e0e1a;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+}
+.dq-gauge-num { font-size: 2.35rem; font-weight: 700; line-height: 1.05; color: #ffffff; }
+.dq-gauge-sub { color: #9a9ac0; font-size: .85rem; }
+.dq-gauge-label { color: #d7d7ea; font-size: .95rem; }
+.dq-arrow { font-size: 2.1rem; color: #22d3ee; }
+</style>
+"""
+
+HERO_HTML = """
+<div class="dq-hero">
+  <h1><span class="dq-grad">🧹 Data Quality Auto-Fixer</span></h1>
+  <p class="dq-tagline"><b>Turn messy data into a clean file in one minute — you approve every change.</b></p>
+  <div class="dq-chips">
+    <span class="dq-chip">🇸🇦 Arabic-first</span>
+    <span class="dq-chip">🤖 Multi-agent · Evaluator–Optimizer</span>
+    <span class="dq-chip">🧍 Human-in-the-loop</span>
+    <span class="dq-chip">🔒 The LLM never touches your data</span>
+  </div>
+  <div class="dq-steps">📤 Upload → 🤖 Review the AI plan → ✅ Approve → ⬇️ Download</div>
+</div>
+"""
+
+st.markdown(THEME_CSS, unsafe_allow_html=True)
+st.markdown(HERO_HTML, unsafe_allow_html=True)
+
+
+def gauge_html(score: float, label: str) -> str:
+    """Circular quality gauge — pure CSS conic-gradient, no external libs."""
+    pct = max(0.0, min(100.0, score))
+    color = "#22c55e" if pct >= 80 else "#f59e0b" if pct >= 50 else "#ef4444"
+    return (
+        f'<div class="dq-gauge-wrap">'
+        f'<div class="dq-gauge" style="background: conic-gradient({color} {pct * 3.6}deg, #1d1d30 0deg);">'
+        f'<div class="dq-gauge-inner"><div class="dq-gauge-num">{pct:.0f}</div>'
+        f'<div class="dq-gauge-sub">/100</div></div></div>'
+        f'<div class="dq-gauge-label">{label}</div></div>'
+    )
 
 
 # --- Safe file loading -----------------------------------------------------
@@ -117,8 +218,9 @@ def render_dimensions(dims: dict) -> None:
 
 
 st.subheader("1 · Profile")
-c1, c2, c3 = st.columns(3)
-c1.metric(f"{score_badge(score_before)} Quality score (before)", f"{score_before:.0f} / 100")
+c1, c2, c3 = st.columns([1.2, 1, 1])
+with c1:
+    st.markdown(gauge_html(score_before, "Quality score"), unsafe_allow_html=True)
 c2.metric("Rows", len(df))
 c3.metric("Issues detected", len(profile["issues"]))
 with st.expander("Quality dimensions (computed, never generated)"):
@@ -243,9 +345,15 @@ if result is not None:
     clean, log = result["clean"], result["log"]
     score_after, issues_after = result["score_after"], result["issues_after"]
 
-    a, b, c = st.columns(3)
-    a.metric(f"{score_badge(score_after)} Quality score (after)", f"{score_after:.0f} / 100",
-             delta=f"{score_after - score_before:.1f}")
+    st.markdown(
+        '<div class="dq-gauge-row">'
+        + gauge_html(score_before, "Before")
+        + '<div class="dq-arrow">➜</div>'
+        + gauge_html(score_after, "After")
+        + "</div>",
+        unsafe_allow_html=True,
+    )
+    b, c = st.columns(2)
     b.metric("Issues remaining", len(issues_after),
              delta=len(issues_after) - len(profile["issues"]), delta_color="inverse")
     c.metric("Cells/rows affected", sum(entry["affected"] for entry in log))
