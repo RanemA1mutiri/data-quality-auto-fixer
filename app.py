@@ -153,6 +153,25 @@ with _toggle_col:
     _dark = st.toggle("Dark mode", value=st.session_state.get("dark_mode", False), key="dark_mode")
 PAL = PALETTES["Dark" if _dark else "Light"]
 
+HERO_HTML = f"""
+<div class="dq-hero">
+  <h1>{icon("database", 26)}Data Quality Auto-Fixer</h1>
+  <p class="dq-tagline">Turn messy data into a clean file in one minute — you approve every change.</p>
+  <div class="dq-chips">
+    <span class="dq-chip">{icon("languages", 15)}Arabic-first</span>
+    <span class="dq-chip">{icon("bot", 15)}Multi-agent · Evaluator–Optimizer</span>
+    <span class="dq-chip">{icon("user-check", 15)}Human-in-the-loop</span>
+    <span class="dq-chip">{icon("lock", 15)}The LLM never touches your data</span>
+  </div>
+  <div class="dq-steps">
+    {icon("upload", 16)}Upload <span class="sep">→</span>
+    {icon("bot", 16)}Review the AI plan <span class="sep">→</span>
+    {icon("check", 16)}Approve <span class="sep">→</span>
+    {icon("download", 16)}Download
+  </div>
+</div>
+"""
+
 st.markdown(build_css(PAL), unsafe_allow_html=True)
 st.markdown(HERO_HTML, unsafe_allow_html=True)
 
