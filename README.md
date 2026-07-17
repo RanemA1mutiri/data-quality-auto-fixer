@@ -1,5 +1,7 @@
 # 🧹 Data Quality Auto-Fixer
 
+[![tests](https://github.com/RanemA1mutiri/data-quality-auto-fixer/actions/workflows/tests.yml/badge.svg)](https://github.com/RanemA1mutiri/data-quality-auto-fixer/actions)
+
 **An AI multi-agent system that automatically repairs messy datasets using an evaluator–optimizer loop — Arabic-first.**
 
 ### 🔴 Live demo: [data-quality-auto-fixer.streamlit.app](https://data-quality-auto-fixer.streamlit.app/)
@@ -21,6 +23,17 @@ Existing tools either **detect** problems (Great Expectations) or hand you **man
 Upload a messy CSV → the system profiles it, proposes cleaning transformations, **scores the result numerically**, and iterates until quality passes a threshold — with **human approval required before any change is applied**.
 
 The output is a number — **measured, never generated**. On the demo dataset the system raises the overall quality score from **87 → 98**, with the validity dimension jumping from **67% → 98%** (phones normalized to +966 E.164, mixed dates to ISO, amounts to real numbers). Plus: a clean file and a full audit log of every change.
+
+## What it fixes — real output from the demo dataset
+
+| Before | After | What happened |
+|---|---|---|
+| `٠٥٥٩٨٧٦٥٤٣` | `+966559876543` | Hindi numerals unified, then Saudi phone normalized to E.164 |
+| `15/01/2026` · `Jan 20 2026` · `2026/02/05` | `2026-01-15` · `2026-01-20` · `2026-02-05` | Mixed date formats → ISO (ISO parsed first — a correct date can never be flipped) |
+| `N/A` · `-` · `غير معروف` | ∅ true nulls | Hidden-null tokens detected, Arabic ones included |
+| `أحمد` / `احمد` (false mismatch) | `احمد` = `احمد` | Alef-variant normalization — duplicates become detectable |
+| `"١٢٠٠"` | `1200.0` | Numeric-looking strings (incl. Hindi digits) → real numbers |
+| `05044455566` (11 digits — invalid) | **left untouched** | The never-guess principle: unconvertible values are never altered |
 
 ## Architecture — Evaluator–Optimizer Pattern
 
