@@ -14,6 +14,7 @@ from pathlib import Path
 import pandas as pd
 import streamlit as st
 
+from src.loop import run_loop
 from src.ops import apply_plan
 from src.planner import build_heuristic_plan, build_plan
 from src.profiler import profile_dataframe
@@ -131,7 +132,17 @@ with st.expander(f"Preview & detected issues — {source_name}", expanded=True):
 st.subheader("2 · Cleaning plan (AI-proposed, you approve)")
 st.caption("🔒 Privacy: the AI sees only aggregate statistics and 5 sample rows — never your full dataset.")
 
-if st.button("🤖 Generate cleaning plan"):
+threshold = st.slider(
+    "🎯 Target quality score (for the auto-optimize loop)", 85, 100, 95,
+    help="The evaluator–optimizer loop keeps improving the plan until the measured score passes this threshold (max 3 iterations, best plan always kept).",
+)
+col_loop, col_single = st.columns([2, 1])
+with col_loop:
+    run_auto = st.button("🔁 Auto-optimize (evaluator–optimizer loop)", type="primary")
+with col_single:
+    run_single = st.button("🤖 Single-pass plan")
+
+if run_single:
     with st.spinner("Rule Planner agent is analyzing the profile..."):
         try:
             plan, rejected = build_plan(profile, df)
@@ -143,7 +154,30 @@ if st.button("🤖 Generate cleaning plan"):
             st.session_state["plan"] = build_heuristic_plan(profile)
             st.session_state["rejected"] = []
             st.session_state["plan_source"] = "heuristic"
+    st.session_state.pop("loop_history", None)
     st.session_state.pop("result", None)
+
+if run_auto:
+    with st.status("🔁 Evaluator–optimizer loop running...", expanded=True) as status:
+        best, history, rejected, source = run_loop(
+            df, profile, threshold=float(threshold), on_event=status.write,
+        )
+        status.update(label="🔁 Loop finished", state="complete")
+    st.session_state["plan"] = best["plan"] if best else []
+    st.session_state["rejected"] = rejected
+    st.session_state["plan_source"] = source
+    st.session_state["loop_history"] = history
+    st.session_state.pop("result", None)
+
+history = st.session_state.get("loop_history")
+if history:
+    st.caption("The loop explores on copies — nothing touches your data until you approve below.")
+    st.dataframe(pd.DataFrame(history), hide_index=True)
+    if len(history) > 1:
+        st.success(
+            f"📈 Score climbed {history[0]['score']:.0f} → {max(h['score'] for h in history):.0f} "
+            f"across {len(history)} iterations — showing the winning plan below."
+        )
 
 plan = st.session_state.get("plan")
 if plan is not None:
@@ -218,4 +252,4 @@ if result is not None:
         )
 
 st.divider()
-st.caption("Roadmap: Phase 2 — full evaluator–optimizer loop · Phase 4 — Arabic executive report + audit export.")
+st.caption("Roadmap: Phase 3 — per-op dry-run preview · Phase 4 — Arabic executive report + audit export.")

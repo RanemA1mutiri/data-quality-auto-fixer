@@ -6,7 +6,7 @@
 
 Try it now — upload [`data/samples/messy_customers_ar.csv`](data/samples/messy_customers_ar.csv) and watch the system profile it, propose an AI cleaning plan, and wait for your approval before touching anything.
 
-> ✅ **Phases 0–1 shipped** (MVP live) · 🚧 Phase 2 in progress (full evaluator–optimizer loop). Roadmap below.
+> ✅ **Phases 0–2 shipped** — the full evaluator–optimizer loop is live: watch the quality score climb iteration by iteration. Roadmap below.
 
 ---
 
@@ -88,7 +88,7 @@ Most data-quality tools break on Arabic. This system is built for it:
 - [x] **Phase 0** — Repo, scaffolding, architecture design
 - [x] **Phase 1** — MVP: upload (or one-click sample) → profile → LLM cleaning plan → per-op human approval → apply → download. Closed op-registry + plan validator + deterministic fallback plan + pytest suite live
 - [x] **Phase 2a** — Validity & consistency dimensions with deterministic column-kind detection: cleaning now measurably raises the score (87 → 98 on the demo dataset)
-- [ ] **Phase 2b** — Full evaluator–optimizer loop with live score updates
+- [x] **Phase 2b** — Full evaluator–optimizer loop, live: Planner proposes → Executor applies (on copies) → Judge measures and emits a targeted weakness vector → Optimizer improves the plan → repeat. Stops on threshold / diminishing returns / stagnation / iteration cap, always keeping the best-so-far plan. Live iteration log in the UI
 - [ ] **Phase 3** — Per-op dry-run preview (see affected cells before approving)
 - [ ] **Phase 4** — Arabic executive report (HTML/RTL) + audit log export
 - [ ] **Phase 5** — Polish: demo video/GIF, Saudi open-data demo, CI badge
