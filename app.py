@@ -8,14 +8,14 @@ Core principle: the LLM never touches the data — it proposes a plan from
 a closed op registry; pandas executes; scores are always computed.
 """
 
-from io import BytesIO
+import json
 from pathlib import Path
 
 import pandas as pd
 import streamlit as st
 
 from src.loop import run_loop
-from src.ops import apply_plan
+from src.ops import apply_plan, dry_run
 from src.planner import build_heuristic_plan, build_plan
 from src.profiler import profile_dataframe
 from src.quality import quality_score
@@ -188,11 +188,28 @@ if plan is not None:
     if not plan:
         st.success("The planner found nothing that needs fixing — unusually clean file!")
 
+    # Dry-run preview: simulate the plan on a copy so every checkbox is an informed decision
+    plan_sig = json.dumps(plan, sort_keys=True, ensure_ascii=False, default=str)
+    if st.session_state.get("preview_sig") != (file_id, plan_sig):
+        with st.spinner("Simulating the plan (dry-run) to preview each operation's impact..."):
+            st.session_state["previews"] = dry_run(df, plan)
+            st.session_state["preview_sig"] = (file_id, plan_sig)
+    previews = st.session_state["previews"]
+
     st.write("**Review each proposed operation** — uncheck anything you don't approve:")
+    st.caption("🔎 Impact previews below assume the full plan runs in order — unchecking earlier ops may change later effects.")
     approved = []
     for i, item in enumerate(plan):
-        label = f"`{item['op']}` on **{item.get('column') or 'whole table'}** — {item.get('reason', '')}"
+        preview = previews[i]
+        label = (
+            f"`{item['op']}` on **{item.get('column') or 'whole table'}** — {item.get('reason', '')} "
+            f"· 🎯 **{preview['affected']}** affected"
+        )
         checked = st.checkbox(label, value=True, key=f"op_{file_id}_{i}")
+        if preview["examples"]:
+            st.caption("　　e.g. " + " · ".join(f"`{e['before']}` → `{e['after']}`" for e in preview["examples"]))
+        elif preview["note"]:
+            st.caption(f"　　{preview['note']}")
         mapping = (item.get("params") or {}).get("mapping")
         if mapping:
             st.dataframe(
@@ -215,6 +232,9 @@ if plan is not None:
             "dims_after": dims_after,
             "issues_after": issues_after,
         }
+        st.toast(f"Done! Quality improved by {score_after - score_before:+.1f} points ✨")
+        if score_after >= threshold:
+            st.balloons()
 
 result = st.session_state.get("result")
 if result is not None:
@@ -230,9 +250,26 @@ if result is not None:
     with st.expander("Quality dimensions after cleaning", expanded=True):
         render_dimensions(result["dims_after"])
 
-    tab_after, tab_before = st.tabs(["✨ After", "Before"])
+    tab_after, tab_before = st.tabs(["✨ After (changed cells highlighted)", "Before"])
     with tab_after:
-        st.dataframe(clean.head(15), use_container_width=True)
+        after_head = clean.head(15).reset_index(drop=True)
+        before_head = df.head(15).reset_index(drop=True)
+        rows = min(len(after_head), len(before_head))
+        shared_cols = [c for c in after_head.columns if c in before_head.columns]
+        a_str = after_head.loc[: rows - 1, shared_cols].astype("string").fillna("␀")
+        b_str = before_head.loc[: rows - 1, shared_cols].astype("string").fillna("␀")
+        changed_mask = a_str != b_str
+
+        def _style_changes(frame: pd.DataFrame) -> pd.DataFrame:
+            style = pd.DataFrame("", index=frame.index, columns=frame.columns)
+            style.loc[changed_mask.index, changed_mask.columns] = changed_mask.map(
+                lambda hit: "background-color: #d3f9d8" if hit else ""
+            )
+            return style
+
+        st.dataframe(after_head.style.apply(_style_changes, axis=None), use_container_width=True)
+        if len(clean) != len(df):
+            st.caption(f"↳ {len(df) - len(clean)} duplicate row(s) removed — highlighting compares rows positionally.")
     with tab_before:
         st.dataframe(df.head(15), use_container_width=True)
 

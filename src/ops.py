@@ -217,15 +217,19 @@ REGISTRY = {
 }
 
 
+def _kwargs_for(item: dict, spec: dict) -> dict:
+    kwargs = {k: v for k, v in (item.get("params") or {}).items() if k in spec["allowed_params"]}
+    if spec["needs_column"]:
+        kwargs["column"] = item["column"]
+    return kwargs
+
+
 def apply_plan(df: pd.DataFrame, plan: list[dict]) -> tuple[pd.DataFrame, list[dict]]:
     """Apply approved plan items in order. Returns (clean_df, change_log)."""
     log = []
     for item in plan:
         spec = REGISTRY[item["op"]]
-        kwargs = {k: v for k, v in (item.get("params") or {}).items() if k in spec["allowed_params"]}
-        if spec["needs_column"]:
-            kwargs["column"] = item["column"]
-        df, affected = spec["fn"](df, **kwargs)
+        df, affected = spec["fn"](df, **_kwargs_for(item, spec))
         log.append({
             "op": item["op"],
             "column": item.get("column") or "—",
@@ -233,3 +237,41 @@ def apply_plan(df: pd.DataFrame, plan: list[dict]) -> tuple[pd.DataFrame, list[d
             "reason": item.get("reason", ""),
         })
     return df, log
+
+
+def dry_run(df: pd.DataFrame, plan: list[dict], max_examples: int = 3) -> list[dict]:
+    """Simulate the full plan on a copy and capture, per operation:
+    the affected count and real before→after examples — so the human
+    approves each op knowing exactly what it will do. Nothing is written."""
+    previews = []
+    work = df
+    for item in plan:
+        spec = REGISTRY[item["op"]]
+        before = work
+        work, affected = spec["fn"](work, **_kwargs_for(item, spec))
+
+        examples: list[dict] = []
+        note = ""
+        if spec["needs_column"]:
+            col = item["column"]
+            b_str = before[col].astype("string").fillna("␀")
+            a_str = work[col].astype("string").fillna("␀")
+            changed = b_str != a_str
+            for idx in list(changed[changed].index[:max_examples]):
+                b_val = before[col][idx]
+                a_val = work[col][idx]
+                examples.append({
+                    "before": "∅" if pd.isna(b_val) else str(b_val),
+                    "after": "∅ (empty)" if pd.isna(a_val) else str(a_val),
+                })
+        elif affected:
+            note = f"{affected} duplicate row(s) will be removed"
+
+        previews.append({
+            "op": item["op"],
+            "column": item.get("column") or "—",
+            "affected": affected,
+            "examples": examples,
+            "note": note,
+        })
+    return previews

@@ -156,3 +156,31 @@ def test_phone_float_artifact():
     out, affected = normalize_phone_sa(df, "mobile")
     assert out["mobile"][0] == "+966501234567"
     assert affected == 1
+
+
+# --- 6. dry-run preview must show real before→after examples ---------------
+
+def test_dry_run_previews_match_plan():
+    from src.ops import dry_run
+
+    df = pd.read_csv("data/samples/messy_customers_ar.csv")
+    plan = [
+        {"op": "standardize_nulls", "column": "amount_sar", "params": {}},
+        {"op": "normalize_phone_sa", "column": "mobile", "params": {}},
+        {"op": "drop_exact_duplicates", "column": None, "params": {}},
+    ]
+    previews = dry_run(df, plan)
+    assert len(previews) == len(plan)
+
+    # standardize_nulls: shows a hidden-null value being emptied
+    p0 = previews[0]
+    assert p0["affected"] >= 1
+    assert any(e["after"].startswith("∅") for e in p0["examples"])
+
+    # normalize_phone_sa: shows a real phone transformation
+    p1 = previews[1]
+    assert p1["affected"] >= 1
+    assert any(e["after"].startswith("+9665") for e in p1["examples"])
+
+    # dry-run must NOT mutate the original dataframe
+    assert df["amount_sar"].astype("string").str.strip().isin(["-", "N/A"]).any()
