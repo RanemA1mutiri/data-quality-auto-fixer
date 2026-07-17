@@ -89,7 +89,7 @@ Most data-quality tools break on Arabic. This system is built for it:
 - [x] **Phase 1** — MVP: upload (or one-click sample) → profile → LLM cleaning plan → per-op human approval → apply → download. Closed op-registry + plan validator + deterministic fallback plan + pytest suite live
 - [x] **Phase 2a** — Validity & consistency dimensions with deterministic column-kind detection: cleaning now measurably raises the score (87 → 98 on the demo dataset)
 - [x] **Phase 2b** — Full evaluator–optimizer loop, live: Planner proposes → Executor applies (on copies) → Judge measures and emits a targeted weakness vector → Optimizer improves the plan → repeat. Stops on threshold / diminishing returns / stagnation / iteration cap, always keeping the best-so-far plan. Live iteration log in the UI
-- [ ] **Phase 3** — Per-op dry-run preview (see affected cells before approving)
+- [x] **Phase 3** — Informed approval: per-op dry-run preview (affected count + real before→after examples on every checkbox) and changed-cell highlighting in the after view
 - [ ] **Phase 4** — Arabic executive report (HTML/RTL) + audit log export
 - [ ] **Phase 5** — Polish: demo video/GIF, Saudi open-data demo, CI badge
 
