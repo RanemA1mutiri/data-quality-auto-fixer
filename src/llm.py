@@ -13,8 +13,15 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
-MODEL = "gemini-flash-latest"
-ENDPOINT = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:generateContent"
+# AI-only by design (project owner's decision): if every model in this chain
+# fails, the system STOPS with a clear message — it never falls back to
+# non-AI planning. The chain keeps the AI available through free-tier
+# congestion: same API, different serving pools.
+MODEL_CHAIN = ["gemini-flash-latest", "gemini-flash-lite-latest", "gemini-2.0-flash"]
+
+
+def _endpoint(model: str) -> str:
+    return f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
 
 
 def get_api_key() -> str:
@@ -39,37 +46,49 @@ def get_api_key() -> str:
     raise RuntimeError("GEMINI_API_KEY not found (Streamlit secrets, env, or .streamlit/secrets.toml)")
 
 
-def generate(prompt: str, temperature: float = 0.0, retries: int = 2) -> str:
+def _call_once(model: str, body: dict, api_key: str) -> str:
+    req = urllib.request.Request(
+        _endpoint(model),
+        data=json.dumps(body).encode("utf-8"),
+        headers={"Content-Type": "application/json", "x-goog-api-key": api_key},
+        method="POST",
+    )
+    with urllib.request.urlopen(req, timeout=60) as resp:
+        data = json.loads(resp.read().decode("utf-8"))
+    candidates = data.get("candidates") or []
+    if not candidates or "content" not in candidates[0]:
+        raise RuntimeError("empty response (safety block or exhausted quota)")
+    return candidates[0]["content"]["parts"][0]["text"]
+
+
+def generate(prompt: str, temperature: float = 0.0) -> str:
     """Single-turn text generation. temperature=0 → reproducible plans.
 
-    Retries once with backoff on rate-limit/transient errors (free-tier
-    quotas get hit easily) and raises a human-readable error otherwise.
-    """
+    Walks the model chain: each model gets one retry with backoff on
+    transient errors (429/500/503), then the next model is tried. If the
+    whole chain fails, raises a clear error — the system stops (AI-only,
+    no silent fallback)."""
     body = {
         "contents": [{"parts": [{"text": prompt}]}],
         "generationConfig": {"temperature": temperature},
     }
-    last_error = None
-    for attempt in range(retries):
-        req = urllib.request.Request(
-            ENDPOINT,
-            data=json.dumps(body).encode("utf-8"),
-            headers={"Content-Type": "application/json", "x-goog-api-key": get_api_key()},
-            method="POST",
-        )
-        try:
-            with urllib.request.urlopen(req, timeout=60) as resp:
-                data = json.loads(resp.read().decode("utf-8"))
-            candidates = data.get("candidates") or []
-            if not candidates or "content" not in candidates[0]:
-                raise RuntimeError("الرد وصل بلا محتوى (حجب أمان أو حصة منتهية)")
-            return candidates[0]["content"]["parts"][0]["text"]
-        except urllib.error.HTTPError as e:
-            last_error = e
-            if e.code in (429, 500, 503) and attempt < retries - 1:
-                time.sleep(2 * (attempt + 1))
-                continue
-            raise RuntimeError(
-                f"خدمة الذكاء الاصطناعي غير متاحة مؤقتاً (HTTP {e.code}) — جرب بعد دقيقة"
-            ) from e
-    raise RuntimeError("خدمة الذكاء الاصطناعي غير متاحة مؤقتاً") from last_error
+    api_key = get_api_key()
+    errors: list[str] = []
+    for model in MODEL_CHAIN:
+        for attempt in range(2):
+            try:
+                return _call_once(model, body, api_key)
+            except urllib.error.HTTPError as e:
+                errors.append(f"{model}: HTTP {e.code}")
+                if e.code in (429, 500, 503) and attempt == 0:
+                    time.sleep(2)
+                    continue
+                break  # this model is down — try the next one
+            except Exception as e:
+                errors.append(f"{model}: {e}")
+                break
+    raise RuntimeError(
+        "⛔ خدمة الذكاء الاصطناعي غير متاحة حالياً (ربما ازدحام أو اكتمال الحد اليومي المجاني) — "
+        "أعيدي المحاولة بعد دقائق. هذا النظام يعمل حصريًا بالتخطيط الذكي.\n"
+        f"AI service unavailable — tried: {' | '.join(errors)}"
+    )

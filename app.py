@@ -17,7 +17,7 @@ import streamlit as st
 
 from src.loop import run_loop
 from src.ops import apply_plan, dry_run
-from src.planner import build_heuristic_plan, build_plan
+from src.planner import build_plan
 from src.profiler import profile_dataframe
 from src.quality import quality_score
 from src.report import build_report
@@ -193,7 +193,7 @@ if df is None or df.empty:
 
 # Reset stale state when the file changes (a plan for file A must never touch file B)
 if st.session_state.get("file_id") != file_id:
-    for key in ("plan", "rejected", "result"):
+    for key in ("plan", "rejected", "result", "loop_history", "previews", "preview_sig"):
         st.session_state.pop(key, None)
     st.session_state["file_id"] = file_id
 
@@ -252,26 +252,24 @@ if run_single:
             plan, rejected = build_plan(profile, df)
             st.session_state["plan"] = plan
             st.session_state["rejected"] = rejected
-            st.session_state["plan_source"] = "ai"
+            st.session_state.pop("loop_history", None)
+            st.session_state.pop("result", None)
         except Exception as e:
-            st.warning(f"⚠️ {e}")
-            st.session_state["plan"] = build_heuristic_plan(profile, df)
-            st.session_state["rejected"] = []
-            st.session_state["plan_source"] = "heuristic"
-    st.session_state.pop("loop_history", None)
-    st.session_state.pop("result", None)
+            st.error(str(e))
 
 if run_auto:
-    with st.status("🔁 Evaluator–optimizer loop running...", expanded=True) as status:
-        best, history, rejected, source = run_loop(
-            df, profile, threshold=float(threshold), on_event=status.write,
-        )
-        status.update(label="🔁 Loop finished", state="complete")
-    st.session_state["plan"] = best["plan"] if best else []
-    st.session_state["rejected"] = rejected
-    st.session_state["plan_source"] = source
-    st.session_state["loop_history"] = history
-    st.session_state.pop("result", None)
+    try:
+        with st.status("🔁 Evaluator–optimizer loop running...", expanded=True) as status:
+            best, history, rejected = run_loop(
+                df, profile, threshold=float(threshold), on_event=status.write,
+            )
+            status.update(label="🔁 Loop finished", state="complete")
+        st.session_state["plan"] = best["plan"] if best else []
+        st.session_state["rejected"] = rejected
+        st.session_state["loop_history"] = history
+        st.session_state.pop("result", None)
+    except Exception as e:
+        st.error(str(e))
 
 history = st.session_state.get("loop_history")
 if history:
@@ -285,12 +283,6 @@ if history:
 
 plan = st.session_state.get("plan")
 if plan is not None:
-    if st.session_state.get("plan_source") == "heuristic":
-        st.info(
-            "🛟 AI unavailable right now — showing the deterministic rule-based plan instead "
-            "(column kinds detected without AI, so it still covers phones/dates/numbers). "
-            "If this keeps happening, check GEMINI_API_KEY in Streamlit Secrets."
-        )
     for note in st.session_state.get("rejected", []):
         st.error(f"🛡️ Validator: {note}")
     if not plan:

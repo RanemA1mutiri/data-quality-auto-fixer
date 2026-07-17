@@ -5,10 +5,13 @@ score is below threshold, the Optimizer receives the Judge's weakness
 vector and produces a targeted improved plan → repeat.
 
 Stop conditions (any): threshold reached · diminishing returns ·
-iteration cap · optimizer stagnation (same plan again) · AI unavailable.
+iteration cap · optimizer stagnation (same plan again).
 The best-so-far plan is always kept — a bad iteration can never make the
 final result worse. The loop only explores on copies; nothing touches the
 user's data until they approve the winning plan in the UI.
+
+AI-only by design: if the initial Planner call fails, the loop raises —
+the app stops with a clear message instead of planning without AI.
 """
 
 from __future__ import annotations
@@ -19,7 +22,7 @@ from collections.abc import Callable
 import pandas as pd
 
 from .ops import apply_plan
-from .planner import build_heuristic_plan, build_plan, optimize_plan, validate_plan
+from .planner import build_plan, optimize_plan, validate_plan
 from .quality import quality_score, weakness_report
 
 
@@ -36,21 +39,17 @@ def run_loop(
     on_event: Callable[[str], None] | None = None,
     planner_fn: Callable | None = None,
     optimizer_fn: Callable | None = None,
-) -> tuple[dict | None, list[dict], list[str], str]:
-    """Run the full loop. Returns (best, history, rejected_notes, plan_source)."""
+) -> tuple[dict | None, list[dict], list[str]]:
+    """Run the full loop. Returns (best, history, rejected_notes).
+    Raises if the AI planner is unavailable — this system never plans without AI."""
     emit = on_event or (lambda msg: None)
     planner_fn = planner_fn or build_plan
     optimizer_fn = optimizer_fn or optimize_plan
 
     rejected_notes: list[str] = []
-    plan_source = "ai"
     emit("🤖 Rule Planner: proposing the initial plan...")
-    try:
-        plan, rejected = planner_fn(profile, df)
-        rejected_notes += rejected
-    except Exception as e:
-        emit(f"⚠️ AI unavailable ({e}) — falling back to the deterministic rule-based plan")
-        plan, plan_source = build_heuristic_plan(profile, df), "heuristic"
+    plan, rejected = planner_fn(profile, df)
+    rejected_notes += rejected
 
     best: dict | None = None
     history: list[dict] = []
@@ -82,9 +81,6 @@ def run_loop(
         if not weaknesses:
             emit("🛑 No measurable weaknesses left")
             break
-        if plan_source == "heuristic":
-            emit("🛑 Optimizer needs the AI — stopping at the rule-based plan")
-            break
 
         emit(f"🔧 Optimizer: targeting {len(weaknesses)} remaining weakness group(s)...")
         try:
@@ -101,4 +97,4 @@ def run_loop(
         seen.add(signature)
         plan = valid
 
-    return best, history, rejected_notes, plan_source
+    return best, history, rejected_notes
