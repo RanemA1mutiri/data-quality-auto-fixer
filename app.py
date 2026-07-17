@@ -96,6 +96,13 @@ html, body, [class*="css"] { font-family: 'Inter', 'IBM Plex Sans Arabic', sans-
 }
 .stButton > button[kind="primary"]:hover { background: #4338CA; }
 
+/* Apply button → green (the "commit the fix" action) */
+.st-key-apply_btn button:not(:disabled) {
+  background: #1A7F5A; color: #fff; border: 0; font-weight: 600;
+  box-shadow: 0 1px 2px rgba(16,24,40,.08);
+}
+.st-key-apply_btn button:not(:disabled):hover { background: #15663F; }
+
 /* Progress bars (dimension bars) */
 [data-testid="stProgress"] > div > div > div { background: #4F46E5; }
 
@@ -320,7 +327,8 @@ if plan is not None:
 
     # --- Apply (deterministic pandas only) ---------------------------------
     st.subheader("3 · Apply & download")
-    if st.button(f":material/check_circle: Apply {len(approved)} approved operations", disabled=not approved):
+    if st.button(f":material/check_circle: Apply {len(approved)} approved operations",
+                 disabled=not approved, key="apply_btn"):
         clean, log = apply_plan(df, approved)
         score_after, dims_after = quality_score(clean)
         issues_after = profile_dataframe(clean)["issues"]
