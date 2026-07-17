@@ -131,9 +131,23 @@ def test_end_to_end_sample_file():
     assert str(clean["mobile"][8]) == "05044455566"
     # alef unified
     assert clean["name"][0] == clean["name"][1] == "احمد العتيبي"
-    # scoring still works
-    score, _ = quality_score(clean)
-    assert 0 <= score <= 100
+
+    # THE LAW: cleaning must RAISE the quality score (validity dimension live)
+    score_before, dims_before = quality_score(df)
+    score_after, dims_after = quality_score(clean)
+    assert score_after > score_before
+    assert dims_after["validity"] > dims_before["validity"]
+    assert dims_after["consistency"] >= dims_before["consistency"]
+
+
+def test_kind_detection():
+    from src.quality import _detect_kind
+
+    df = pd.read_csv("data/samples/messy_customers_ar.csv")
+    assert _detect_kind("mobile", df["mobile"]) == "phone"
+    assert _detect_kind("order_date", df["order_date"]) == "date"
+    assert _detect_kind("amount_sar", df["amount_sar"]) == "numeric"
+    assert _detect_kind("name", df["name"]) == "text"
 
 
 def test_phone_float_artifact():
