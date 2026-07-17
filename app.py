@@ -74,15 +74,9 @@ DARK = {
 }
 P = DARK if st.session_state.dark else LIGHT
 
-# Drive Streamlit's native engine (themes dataframes + chrome for both modes)
-try:
-    st._config.set_option("theme.base", P["base"])
-    st._config.set_option("theme.backgroundColor", P["bg"])
-    st._config.set_option("theme.secondaryBackgroundColor", P["surface2"])
-    st._config.set_option("theme.textColor", P["text"])
-    st._config.set_option("theme.primaryColor", P["primary"])
-except Exception:
-    pass
+# NOTE: we deliberately do NOT touch st._config / the native engine — it is
+# global+sticky on the server and corrupted the (approved) light look.
+# Light = the untouched native light theme. Dark = a pure CSS overlay below.
 
 _, _tcol = st.columns([9, 1])
 with _tcol:
@@ -130,13 +124,8 @@ html, body, [class*="css"] {{ font-family: 'Inter', 'IBM Plex Sans Arabic', sans
 [data-testid="stMetricValue"] {{ font-weight: 700; font-size: 2.1rem; color: {P['text']}; }}
 [data-testid="stMetricLabel"] p {{ color: {P['text2']} !important; font-weight: 500; }}
 
-/* Buttons — secondary buttons follow the theme (fixes the white toggle) */
-.stButton > button {{
-  border-radius: 8px; font-weight: 500;
-  background: {P['surface']}; color: {P['text']}; border: 1px solid {P['border']};
-  transition: background .15s ease, border-color .15s ease;
-}}
-.stButton > button:hover {{ border-color: {P['muted']}; }}
+/* Buttons */
+.stButton > button {{ border-radius: 8px; font-weight: 500; }}
 .stButton > button[kind="primary"] {{
   background: {P['primary']}; border: 0; color: #fff; font-weight: 600;
   box-shadow: 0 1px 2px rgba(0,0,0,.15);
@@ -148,13 +137,6 @@ html, body, [class*="css"] {{ font-family: 'Inter', 'IBM Plex Sans Arabic', sans
 
 /* Expanders */
 [data-testid="stExpander"] {{ border: 1px solid {P['border']}; border-radius: 12px; background: {P['surface']}; }}
-
-/* Streamlit chrome — keep it in sync with the theme (no white spots in dark) */
-[data-testid="stHeader"], [data-testid="stToolbar"] {{ background: transparent; }}
-[data-testid="stFileUploaderDropzone"] {{ background: {P['surface2']}; border-color: {P['border']}; }}
-[data-testid="stFileUploaderDropzone"] button {{
-  background: {P['surface']}; color: {P['text']}; border: 1px solid {P['border']};
-}}
 
 /* Score gauges */
 .dq-gauge-row {{ display: flex; gap: 2rem; align-items: center; flex-wrap: wrap; margin: .4rem 0 1rem; }}
@@ -194,6 +176,42 @@ HERO_HTML = f"""
 """
 
 st.markdown(THEME_CSS, unsafe_allow_html=True)
+
+# Dark mode is a pure CSS overlay — it recolors Streamlit's own chrome (which
+# is natively light) WITHOUT touching the engine, so the light theme stays
+# byte-for-byte the approved design. (Native dataframes can't be reached by
+# CSS, so tables stay light in dark mode — a known Streamlit limitation.)
+if st.session_state.dark:
+    st.markdown(f"""
+<style>
+.stApp, [data-testid="stAppViewContainer"], [data-testid="stMain"] {{ background: {DARK['bg']}; }}
+.stApp p, .stApp li, .stApp label, .stApp span,
+.stApp h1, .stApp h2, .stApp h3, [data-testid="stWidgetLabel"] p,
+[data-testid="stMarkdownContainer"] p {{ color: {DARK['text']}; }}
+[data-testid="stCaptionContainer"], [data-testid="stCaptionContainer"] p {{ color: {DARK['text2']} !important; }}
+[data-testid="stHeader"], [data-testid="stToolbar"] {{ background: transparent; }}
+/* Secondary buttons (incl. the theme toggle) */
+.stButton > button:not([kind="primary"]) {{
+  background: {DARK['surface']} !important; color: {DARK['text']} !important;
+  border: 1px solid {DARK['border']} !important;
+}}
+.stButton > button:not([kind="primary"]):hover {{ border-color: {DARK['muted']} !important; }}
+/* File uploader */
+[data-testid="stFileUploaderDropzone"] {{ background: {DARK['surface2']} !important; border-color: {DARK['border']} !important; }}
+[data-testid="stFileUploaderDropzone"] * {{ color: {DARK['text2']} !important; }}
+[data-testid="stFileUploaderDropzone"] button {{
+  background: {DARK['surface']} !important; color: {DARK['text']} !important; border: 1px solid {DARK['border']} !important;
+}}
+/* Metric cards + expanders */
+[data-testid="stMetric"] {{ background: {DARK['surface']} !important; border-color: {DARK['border']} !important; }}
+[data-testid="stExpander"] {{ background: {DARK['surface']} !important; border-color: {DARK['border']} !important; }}
+[data-testid="stExpander"] summary, [data-testid="stExpander"] summary * {{ color: {DARK['text']} !important; }}
+/* Inputs / slider track */
+[data-baseweb="input"], [data-baseweb="select"] > div, [data-baseweb="base-input"] {{
+  background: {DARK['surface2']} !important; border-color: {DARK['border']} !important; color: {DARK['text']} !important;
+}}
+</style>""", unsafe_allow_html=True)
+
 st.markdown(HERO_HTML, unsafe_allow_html=True)
 
 
