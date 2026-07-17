@@ -50,7 +50,7 @@ def run_loop(
         rejected_notes += rejected
     except Exception as e:
         emit(f"⚠️ AI unavailable ({e}) — falling back to the deterministic rule-based plan")
-        plan, plan_source = build_heuristic_plan(profile), "heuristic"
+        plan, plan_source = build_heuristic_plan(profile, df), "heuristic"
 
     best: dict | None = None
     history: list[dict] = []

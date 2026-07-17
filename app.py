@@ -255,7 +255,7 @@ if run_single:
             st.session_state["plan_source"] = "ai"
         except Exception as e:
             st.warning(f"⚠️ {e}")
-            st.session_state["plan"] = build_heuristic_plan(profile)
+            st.session_state["plan"] = build_heuristic_plan(profile, df)
             st.session_state["rejected"] = []
             st.session_state["plan_source"] = "heuristic"
     st.session_state.pop("loop_history", None)
@@ -286,7 +286,11 @@ if history:
 plan = st.session_state.get("plan")
 if plan is not None:
     if st.session_state.get("plan_source") == "heuristic":
-        st.info("🛟 AI unavailable right now — showing a rule-based plan computed from the profile instead.")
+        st.info(
+            "🛟 AI unavailable right now — showing the deterministic rule-based plan instead "
+            "(column kinds detected without AI, so it still covers phones/dates/numbers). "
+            "If this keeps happening, check GEMINI_API_KEY in Streamlit Secrets."
+        )
     for note in st.session_state.get("rejected", []):
         st.error(f"🛡️ Validator: {note}")
     if not plan:
