@@ -122,3 +122,4 @@ GEMINI_API_KEY = "your-key-here"
 ---
 
 *Built with AI-assisted development — architecture, quality dimensions, guardrails and evaluation design by [Ranem Almutiri](https://www.linkedin.com/in/ran8/).*
+
