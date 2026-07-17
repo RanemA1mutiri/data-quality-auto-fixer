@@ -1,13 +1,17 @@
 """Data Quality Auto-Fixer — Streamlit entry point.
 
-Phase 1 (MVP in progress): upload → profile → quality score.
-The LLM never touches the data: pandas computes, the LLM will only
-propose cleaning plans and narrate (see README architecture).
+Phase 1 (MVP): upload → profile → LLM cleaning plan → human approval →
+deterministic apply (pandas) → before/after score → download.
+
+Core principle: the LLM never touches the data — it proposes a plan from
+a closed op registry; pandas executes; scores are always computed.
 """
 
-import streamlit as st
 import pandas as pd
+import streamlit as st
 
+from src.ops import apply_plan
+from src.planner import build_plan
 from src.profiler import profile_dataframe
 from src.quality import quality_score
 
@@ -16,50 +20,84 @@ st.set_page_config(page_title="Data Quality Auto-Fixer", page_icon="🧹", layou
 st.title("🧹 Data Quality Auto-Fixer")
 st.caption(
     "AI multi-agent system (evaluator–optimizer) that repairs messy data — Arabic-first. "
-    "🚧 Phase 1: profiling & quality score."
+    "The LLM proposes; deterministic pandas executes; you approve."
 )
 
 uploaded = st.file_uploader("Upload a messy CSV or Excel file", type=["csv", "xlsx"])
 
 if uploaded is None:
-    st.info("⬆️ Upload a file to see its data-quality profile. Try `data/samples/messy_customers_ar.csv` from the repo.")
+    st.info("⬆️ Upload a file to begin. Try `data/samples/messy_customers_ar.csv` from the repo.")
     st.stop()
 
 # --- Load (a copy — the original upload is never mutated) ---
-if uploaded.name.endswith(".csv"):
-    df = pd.read_csv(uploaded)
-else:
-    df = pd.read_excel(uploaded)
+df = pd.read_csv(uploaded) if uploaded.name.endswith(".csv") else pd.read_excel(uploaded)
 
-st.subheader("Preview")
-st.dataframe(df.head(20), use_container_width=True)
-
-# --- Deterministic profile ---
+score_before, dims_before = quality_score(df)
 profile = profile_dataframe(df)
-score, dimensions = quality_score(df)
 
-st.subheader("Data Quality Score")
-col1, col2 = st.columns([1, 2])
-with col1:
-    st.metric("Overall quality", f"{score:.0f} / 100")
-with col2:
-    st.dataframe(
-        pd.DataFrame(
-            [{"Dimension": name, "Score": f"{val*100:.1f}%"} for name, val in dimensions.items()]
-        ),
-        use_container_width=True,
-        hide_index=True,
-    )
+st.subheader("1 · Profile")
+c1, c2, c3 = st.columns(3)
+c1.metric("Quality score (before)", f"{score_before:.0f} / 100")
+c2.metric("Rows", len(df))
+c3.metric("Issues detected", len(profile["issues"]))
 
-st.subheader("Column Profile")
-st.dataframe(pd.DataFrame(profile["columns"]), use_container_width=True, hide_index=True)
-
-st.subheader("Detected Issues")
-if profile["issues"]:
+with st.expander("Preview & detected issues", expanded=True):
+    st.dataframe(df.head(15), use_container_width=True)
     for issue in profile["issues"]:
         st.warning(issue)
-else:
-    st.success("No obvious issues detected — this file is unusually clean!")
+
+# --- Plan (LLM proposes — privacy: only aggregate profile + 5 sample rows are sent) ---
+st.subheader("2 · Cleaning plan (AI-proposed, you approve)")
+st.caption("🔒 Privacy: the AI sees only aggregate statistics and 5 sample rows — never your full dataset.")
+
+if st.button("🤖 Generate cleaning plan", type="primary"):
+    with st.spinner("Rule Planner agent is analyzing the profile..."):
+        try:
+            plan, rejected = build_plan(profile, df)
+            st.session_state["plan"] = plan
+            st.session_state["rejected"] = rejected
+        except Exception as e:
+            st.error(f"LLM call failed: {e}")
+
+plan = st.session_state.get("plan")
+if plan:
+    for note in st.session_state.get("rejected", []):
+        st.error(f"🛡️ Validator: {note}")
+
+    st.write("**Review each proposed operation** — uncheck anything you don't approve:")
+    approved = []
+    for i, item in enumerate(plan):
+        label = f"`{item['op']}` on **{item.get('column') or 'whole table'}** — {item.get('reason', '')}"
+        if st.checkbox(label, value=True, key=f"op_{i}"):
+            approved.append(item)
+
+    # --- Apply (deterministic pandas only) ---
+    st.subheader("3 · Apply & download")
+    if st.button(f"✅ Apply {len(approved)} approved operations"):
+        clean, log = apply_plan(df, approved)
+        score_after, dims_after = quality_score(clean)
+        issues_after = profile_dataframe(clean)["issues"]
+
+        a, b, c = st.columns(3)
+        a.metric("Quality score (after)", f"{score_after:.0f} / 100", delta=f"{score_after - score_before:.1f}")
+        b.metric("Issues remaining", len(issues_after), delta=len(issues_after) - len(profile["issues"]))
+        c.metric("Cells/rows affected", sum(l["affected"] for l in log))
+
+        st.dataframe(clean.head(15), use_container_width=True)
+
+        st.write("**Audit log** — every transformation, recorded:")
+        st.dataframe(pd.DataFrame(log), use_container_width=True, hide_index=True)
+
+        st.download_button(
+            "⬇️ Download clean CSV",
+            clean.to_csv(index=False).encode("utf-8-sig"),
+            file_name=f"clean_{uploaded.name.rsplit('.', 1)[0]}.csv",
+            mime="text/csv",
+        )
+        st.caption(
+            "Note: exposing hidden nulls ('N/A', '-') can lower the completeness score — "
+            "that's honesty, not regression. The validity dimension (Phase 2) reflects the true gain."
+        )
 
 st.divider()
-st.caption("Next up (Phase 1): LLM-proposed cleaning plan → human approval → apply with pandas → download clean file.")
+st.caption("Roadmap: Phase 2 — full evaluator–optimizer loop · Phase 4 — Arabic executive report + audit export.")
