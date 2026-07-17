@@ -2,19 +2,18 @@
 
 Produces the structured profile that later feeds the Semantic Inferrer
 and the Rule Planner (LLM agents). Numbers here are always computed,
-never generated.
+never generated. All checks are vectorized and safe on empty/all-null
+columns.
 """
 
 from __future__ import annotations
 
-import re
-
 import pandas as pd
 
-# Arabic-specific patterns
-ARABIC_CHARS = re.compile(r"[؀-ۿ]")
-HINDI_DIGITS = re.compile(r"[٠-٩]")
-ALEF_VARIANTS = re.compile(r"[أإآٱ]")
+from .ops import NULL_TOKENS
+
+HINDI_DIGITS_PATTERN = r"[٠-٩۰-۹]"
+ALEF_VARIANTS_PATTERN = r"[أإآٱ]"
 
 
 def profile_dataframe(df: pd.DataFrame) -> dict:
@@ -23,22 +22,23 @@ def profile_dataframe(df: pd.DataFrame) -> dict:
     issues = []
 
     total_rows = len(df)
-    duplicate_rows = int(df.duplicated().sum())
+    duplicate_rows = int(df.duplicated().sum()) if total_rows else 0
     if duplicate_rows:
         issues.append(f"🔁 {duplicate_rows} duplicate rows found ({duplicate_rows / total_rows:.1%} of data)")
 
     for col in df.columns:
         series = df[col]
         missing = int(series.isna().sum())
-        # Hidden nulls: strings that mean "missing" but aren't NaN
         hidden_nulls = 0
         mixed_numerals = 0
         alef_variants = 0
-        if pd.api.types.is_string_dtype(series) or series.dtype == object:
-            as_str = series.dropna().astype(str)
-            hidden_nulls = int(as_str.str.strip().isin(["", "-", "N/A", "NA", "null", "NULL", "غير معروف", "لا يوجد"]).sum())
-            mixed_numerals = int(as_str.apply(lambda v: bool(HINDI_DIGITS.search(v))).sum())
-            alef_variants = int(as_str.apply(lambda v: bool(ALEF_VARIANTS.search(v))).sum())
+
+        is_texty = pd.api.types.is_string_dtype(series) or series.dtype == object
+        as_str = series.dropna().astype("string") if is_texty else None
+        if as_str is not None and len(as_str):
+            hidden_nulls = int(as_str.str.strip().isin(NULL_TOKENS).sum())
+            mixed_numerals = int(as_str.str.contains(HINDI_DIGITS_PATTERN, regex=True).sum())
+            alef_variants = int(as_str.str.contains(ALEF_VARIANTS_PATTERN, regex=True).sum())
 
         columns.append(
             {
