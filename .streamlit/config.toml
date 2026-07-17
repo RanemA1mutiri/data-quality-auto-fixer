@@ -1,7 +1,7 @@
+# Light is the default. Only the accent + font are pinned here so that
+# Streamlit's native Dark theme (⋮ → Settings → Theme) works fully — tables
+# and all chrome included. Our custom surfaces follow via st.context.theme.
 [theme]
 base = "light"
 primaryColor = "#4F46E5"
-backgroundColor = "#FBFBFD"
-secondaryBackgroundColor = "#F1F3F5"
-textColor = "#1A1D24"
 font = "sans serif"

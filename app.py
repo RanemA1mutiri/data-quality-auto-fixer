@@ -53,11 +53,9 @@ def icon(name: str, size: int = 18) -> str:
     )
 
 
-# --- Theme: sun/moon toggle. Flips Streamlit's own engine (so tables + all
-# chrome switch too) and mirrors the palette into our custom CSS surfaces. ---
-if "dark" not in st.session_state:
-    st.session_state.dark = False
-
+# --- Theme: follow Streamlit's NATIVE theme (⋮ menu → Settings → Theme) so
+# the whole app — tables and chrome included — switches reliably with zero
+# engine tampering. We only mirror the active theme into our custom surfaces. ---
 LIGHT = {
     "base": "light", "bg": "#FBFBFD", "surface": "#FFFFFF", "surface2": "#F1F3F5",
     "border": "#E6E8EB", "text": "#1A1D24", "text2": "#5A6472", "muted": "#98A2B3",
@@ -72,19 +70,15 @@ DARK = {
     "success": "#3FB950", "warning": "#D29922", "danger": "#F85149",
     "track": "#21262D", "gauge_inner": "#0D1117", "hl_bg": "#0E2A1B", "hl_text": "#56D364",
 }
-P = DARK if st.session_state.dark else LIGHT
+def _is_dark() -> bool:
+    try:
+        return st.context.theme.type == "dark"
+    except Exception:
+        return False
 
-# NOTE: we deliberately do NOT touch st._config / the native engine — it is
-# global+sticky on the server and corrupted the (approved) light look.
-# Light = the untouched native light theme. Dark = a pure CSS overlay below.
 
-_, _tcol = st.columns([9, 1])
-with _tcol:
-    if st.button(":material/light_mode:" if st.session_state.dark else ":material/dark_mode:",
-                 help="Toggle light / dark theme", key="theme_btn"):
-        st.session_state.dark = not st.session_state.dark
-        st.rerun()
-
+IS_DARK = _is_dark()
+P = DARK if IS_DARK else LIGHT
 
 THEME_CSS = f"""
 <style>
@@ -176,42 +170,6 @@ HERO_HTML = f"""
 """
 
 st.markdown(THEME_CSS, unsafe_allow_html=True)
-
-# Dark mode is a pure CSS overlay — it recolors Streamlit's own chrome (which
-# is natively light) WITHOUT touching the engine, so the light theme stays
-# byte-for-byte the approved design. (Native dataframes can't be reached by
-# CSS, so tables stay light in dark mode — a known Streamlit limitation.)
-if st.session_state.dark:
-    st.markdown(f"""
-<style>
-.stApp, [data-testid="stAppViewContainer"], [data-testid="stMain"] {{ background: {DARK['bg']}; }}
-.stApp p, .stApp li, .stApp label, .stApp span,
-.stApp h1, .stApp h2, .stApp h3, [data-testid="stWidgetLabel"] p,
-[data-testid="stMarkdownContainer"] p {{ color: {DARK['text']}; }}
-[data-testid="stCaptionContainer"], [data-testid="stCaptionContainer"] p {{ color: {DARK['text2']} !important; }}
-[data-testid="stHeader"], [data-testid="stToolbar"] {{ background: transparent; }}
-/* Secondary buttons (incl. the theme toggle) */
-.stButton > button:not([kind="primary"]) {{
-  background: {DARK['surface']} !important; color: {DARK['text']} !important;
-  border: 1px solid {DARK['border']} !important;
-}}
-.stButton > button:not([kind="primary"]):hover {{ border-color: {DARK['muted']} !important; }}
-/* File uploader */
-[data-testid="stFileUploaderDropzone"] {{ background: {DARK['surface2']} !important; border-color: {DARK['border']} !important; }}
-[data-testid="stFileUploaderDropzone"] * {{ color: {DARK['text2']} !important; }}
-[data-testid="stFileUploaderDropzone"] button {{
-  background: {DARK['surface']} !important; color: {DARK['text']} !important; border: 1px solid {DARK['border']} !important;
-}}
-/* Metric cards + expanders */
-[data-testid="stMetric"] {{ background: {DARK['surface']} !important; border-color: {DARK['border']} !important; }}
-[data-testid="stExpander"] {{ background: {DARK['surface']} !important; border-color: {DARK['border']} !important; }}
-[data-testid="stExpander"] summary, [data-testid="stExpander"] summary * {{ color: {DARK['text']} !important; }}
-/* Inputs / slider track */
-[data-baseweb="input"], [data-baseweb="select"] > div, [data-baseweb="base-input"] {{
-  background: {DARK['surface2']} !important; border-color: {DARK['border']} !important; color: {DARK['text']} !important;
-}}
-</style>""", unsafe_allow_html=True)
-
 st.markdown(HERO_HTML, unsafe_allow_html=True)
 
 
