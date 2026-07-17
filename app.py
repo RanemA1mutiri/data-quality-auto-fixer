@@ -9,6 +9,7 @@ a closed op registry; pandas executes; scores are always computed.
 """
 
 import json
+from io import BytesIO
 from pathlib import Path
 
 import pandas as pd
@@ -19,6 +20,7 @@ from src.ops import apply_plan, dry_run
 from src.planner import build_heuristic_plan, build_plan
 from src.profiler import profile_dataframe
 from src.quality import quality_score
+from src.report import build_report
 
 SAMPLE_PATH = Path(__file__).parent / "data" / "samples" / "messy_customers_ar.csv"
 
@@ -276,12 +278,48 @@ if result is not None:
     st.write("**Audit log** — every transformation, recorded:")
     st.dataframe(pd.DataFrame(log), use_container_width=True, hide_index=True)
 
-    st.download_button(
-        "⬇️ Download clean CSV",
+    base_name = source_name.rsplit(".", 1)[0].replace(" ", "_")
+    report_html = build_report(
+        source_name=source_name,
+        rows=len(df),
+        score_before=score_before,
+        dims_before=dims_before,
+        score_after=score_after,
+        dims_after=result["dims_after"],
+        log=log,
+        issues_before=len(profile["issues"]),
+        issues_after=len(issues_after),
+    )
+    excel_buffer = BytesIO()
+    clean.to_excel(excel_buffer, index=False)
+
+    d1, d2, d3, d4 = st.columns(4)
+    d1.download_button(
+        "⬇️ Clean CSV",
         clean.to_csv(index=False).encode("utf-8-sig"),
-        file_name=f"clean_{source_name.rsplit('.', 1)[0]}.csv",
+        file_name=f"clean_{base_name}.csv",
         mime="text/csv",
     )
+    d2.download_button(
+        "⬇️ Clean Excel",
+        excel_buffer.getvalue(),
+        file_name=f"clean_{base_name}.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+    d3.download_button(
+        "📄 التقرير التنفيذي (عربي)",
+        report_html.encode("utf-8"),
+        file_name=f"quality_report_{base_name}.html",
+        mime="text/html",
+    )
+    d4.download_button(
+        "🧾 Audit log (JSON)",
+        json.dumps(log, ensure_ascii=False, indent=2).encode("utf-8"),
+        file_name=f"audit_log_{base_name}.json",
+        mime="application/json",
+    )
+    st.caption("📄 The Arabic executive report is a self-contained HTML — open it and print to PDF for management.")
+
     if score_after < score_before:
         st.caption(
             "Note: exposing hidden nulls ('N/A', '-') can lower the completeness score — "

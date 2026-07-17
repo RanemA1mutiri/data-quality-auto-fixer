@@ -184,3 +184,26 @@ def test_dry_run_previews_match_plan():
 
     # dry-run must NOT mutate the original dataframe
     assert df["amount_sar"].astype("string").str.strip().isin(["-", "N/A"]).any()
+
+
+# --- 7. Arabic executive report -------------------------------------------
+
+def test_report_is_valid_rtl_html():
+    from src.quality import quality_score as qs
+    from src.report import build_report
+
+    df = pd.read_csv("data/samples/messy_customers_ar.csv")
+    plan = [
+        {"op": "standardize_nulls", "column": "amount_sar", "params": {}, "reason": "قيم مخفية"},
+        {"op": "normalize_phone_sa", "column": "mobile", "params": {}, "reason": "توحيد الجوالات"},
+    ]
+    clean, log = apply_plan(df, plan)
+    s_b, d_b = qs(df)
+    s_a, d_a = qs(clean)
+    html_out = build_report("test.csv", len(df), s_b, d_b, s_a, d_a, log, 6, 2)
+
+    assert 'dir="rtl"' in html_out
+    assert "الصلاحية" in html_out                      # dimensions table
+    assert "توحيد أرقام الجوال السعودية" in html_out    # Arabic op label
+    assert f"{s_a:.0f}" in html_out                     # computed score present
+    assert "محسوبة برمجيًا" in html_out                 # the philosophy, stated
