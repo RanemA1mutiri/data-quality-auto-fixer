@@ -17,7 +17,6 @@ import streamlit as st
 
 from src.loop import run_loop
 from src.ops import apply_plan, dry_run
-from src.planner import build_plan
 from src.profiler import profile_dataframe
 from src.quality import quality_score
 from src.report import build_report
@@ -240,22 +239,7 @@ threshold = st.slider(
     "🎯 Target quality score (for the auto-optimize loop)", 85, 100, 95,
     help="The evaluator–optimizer loop keeps improving the plan until the measured score passes this threshold (max 3 iterations, best plan always kept).",
 )
-col_loop, col_single = st.columns([2, 1])
-with col_loop:
-    run_auto = st.button("🔁 Auto-optimize (evaluator–optimizer loop)", type="primary")
-with col_single:
-    run_single = st.button("🤖 Single-pass plan")
-
-if run_single:
-    with st.spinner("Rule Planner agent is analyzing the profile..."):
-        try:
-            plan, rejected = build_plan(profile, df)
-            st.session_state["plan"] = plan
-            st.session_state["rejected"] = rejected
-            st.session_state.pop("loop_history", None)
-            st.session_state.pop("result", None)
-        except Exception as e:
-            st.error(str(e))
+run_auto = st.button("🔁 Auto-optimize (evaluator–optimizer loop)", type="primary")
 
 if run_auto:
     try:
@@ -369,7 +353,7 @@ if result is not None:
         def _style_changes(frame: pd.DataFrame) -> pd.DataFrame:
             style = pd.DataFrame("", index=frame.index, columns=frame.columns)
             style.loc[changed_mask.index, changed_mask.columns] = changed_mask.map(
-                lambda hit: "background-color: #d3f9d8" if hit else ""
+                lambda hit: "background-color: #14532d; color: #a7f3d0; font-weight: 600" if hit else ""
             )
             return style
 
