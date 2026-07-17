@@ -81,27 +81,30 @@ def _detect_kind(name: str, series: pd.Series) -> str:
     return "text"
 
 
-def _validity_of(series: pd.Series, kind: str) -> tuple[int, int]:
-    """Return (valid_count, checked_count) for one column. NA cells are
-    completeness's business, not validity's — they're excluded here."""
+def _validity_of(series: pd.Series, kind: str) -> tuple[int, int, list[str]]:
+    """Return (valid_count, checked_count, invalid_examples) for one column.
+    NA cells are completeness's business, not validity's — excluded here."""
     values = series.dropna()
     if not len(values):
-        return 0, 0
+        return 0, 0, []
 
     if kind == "numeric":
         if pd.api.types.is_numeric_dtype(series):
-            return len(values), len(values)
+            return len(values), len(values), []
         valid = values.map(lambda v: isinstance(v, (int, float)) and not isinstance(v, bool))
-        return int(valid.sum()), len(values)
+        examples = [str(x) for x in values[~valid].head(3)]
+        return int(valid.sum()), len(values), examples
 
     as_str = values.astype("string")
     if kind == "phone":
-        return int(as_str.str.fullmatch(_E164_SA.pattern).fillna(False).sum()), len(values)
+        ok = as_str.str.fullmatch(_E164_SA.pattern).fillna(False)
+        return int(ok.sum()), len(values), [str(x) for x in as_str[~ok].head(3)]
     if kind == "date":
         if pd.api.types.is_datetime64_any_dtype(series):
-            return len(values), len(values)
-        return int(as_str.str.fullmatch(_ISO_DATE.pattern).fillna(False).sum()), len(values)
-    return len(values), len(values)  # plain text: validity not applicable → all pass
+            return len(values), len(values), []
+        ok = as_str.str.fullmatch(_ISO_DATE.pattern).fillna(False)
+        return int(ok.sum()), len(values), [str(x) for x in as_str[~ok].head(3)]
+    return len(values), len(values), []  # plain text: validity not applicable → all pass
 
 
 def _consistency_of(series: pd.Series) -> tuple[int, int]:
@@ -132,7 +135,7 @@ def quality_score(df: pd.DataFrame, weights: dict | None = None) -> tuple[float,
     clean_total = text_total = 0
     for col in df.columns:
         kind = _detect_kind(col, df[col])
-        v, c = _validity_of(df[col], kind)
+        v, c, _ = _validity_of(df[col], kind)
         valid_total += v
         checked_total += c
         cl, ct = _consistency_of(df[col])
@@ -152,3 +155,35 @@ def quality_score(df: pd.DataFrame, weights: dict | None = None) -> tuple[float,
 
     score = sum(dims[k] * (w / total_w) for k, w in applicable.items())
     return max(0.0, min(1.0, score)) * 100, dims
+
+
+def weakness_report(df: pd.DataFrame) -> list[dict]:
+    """The Judge's targeted feedback for the Optimizer: WHERE the remaining
+    problems are, per column, with computed counts and real examples —
+    so the next plan iteration is directed, not blind."""
+    report: list[dict] = []
+    total_rows = len(df)
+    for col in df.columns:
+        kind = _detect_kind(col, df[col])
+        v, c, examples = _validity_of(df[col], kind)
+        cl, ct = _consistency_of(df[col])
+        weaknesses: dict = {}
+        if c and v < c:
+            weaknesses["invalid_values"] = {
+                "count": c - v,
+                "share": round(1 - v / c, 3),
+                "examples": examples,
+                "expected_format": {"phone": "+9665XXXXXXXX", "date": "YYYY-MM-DD",
+                                    "numeric": "real number"}.get(kind, ""),
+            }
+        if ct and cl < ct:
+            weaknesses["representation_noise"] = {"count": ct - cl}
+        missing = int(df[col].isna().sum())
+        if total_rows and missing / total_rows > 0.2:
+            weaknesses["high_missing"] = {"count": missing}
+        if weaknesses:
+            report.append({"column": str(col), "kind": kind, **weaknesses})
+    duplicates = int(df.duplicated().sum()) if total_rows else 0
+    if duplicates:
+        report.append({"column": "__table__", "kind": "table", "duplicate_rows": duplicates})
+    return report
