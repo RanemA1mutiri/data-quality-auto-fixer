@@ -117,21 +117,29 @@ html, body, [class*="css"] {{ font-family: 'Inter', 'IBM Plex Sans Arabic', sans
 .dq-steps svg {{ color: {P['primary']}; }}
 .dq-steps .sep {{ color: {P['muted']}; margin: 0 .2rem; }}
 
+/* Headings — full presence in both modes */
+.stApp h1, .stApp h2, .stApp h3 {{ color: {P['text']}; }}
+
 /* Metric cards */
 [data-testid="stMetric"] {{
   background: {P['surface']};
   border: 1px solid {P['border']};
-  border-radius: 12px; padding: 1rem 1.15rem;
-  box-shadow: 0 1px 2px rgba(16,24,40,.04), 0 1px 3px rgba(16,24,40,.06);
+  border-radius: 14px; padding: 1.2rem 1.35rem;
+  box-shadow: 0 1px 2px rgba(0,0,0,.14), 0 2px 6px rgba(0,0,0,.10);
 }}
-[data-testid="stMetricValue"] {{ font-weight: 600; color: {P['text']}; }}
+[data-testid="stMetricValue"] {{ font-weight: 700; font-size: 2.1rem; color: {P['text']}; }}
+[data-testid="stMetricLabel"] p {{ color: {P['text2']} !important; font-weight: 500; }}
 
-/* Buttons */
-.stButton > button {{ border-radius: 8px; font-weight: 500; }}
+/* Buttons — secondary buttons follow the theme (fixes the white toggle) */
+.stButton > button {{
+  border-radius: 8px; font-weight: 500;
+  background: {P['surface']}; color: {P['text']}; border: 1px solid {P['border']};
+  transition: background .15s ease, border-color .15s ease;
+}}
+.stButton > button:hover {{ border-color: {P['muted']}; }}
 .stButton > button[kind="primary"] {{
   background: {P['primary']}; border: 0; color: #fff; font-weight: 600;
-  box-shadow: 0 1px 2px rgba(16,24,40,.08);
-  transition: background .15s ease;
+  box-shadow: 0 1px 2px rgba(0,0,0,.15);
 }}
 .stButton > button[kind="primary"]:hover {{ background: {P['primary_hover']}; }}
 
