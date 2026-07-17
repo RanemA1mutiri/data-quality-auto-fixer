@@ -147,11 +147,17 @@ html, body, [class*="css"] {{ font-family: 'Inter', 'IBM Plex Sans Arabic', sans
 """
 
 
-# --- Theme toggle (top-right) ---------------------------------------------
-_, _toggle_col = st.columns([5, 1])
-with _toggle_col:
-    _dark = st.toggle("Dark mode", value=st.session_state.get("dark_mode", False), key="dark_mode")
-PAL = PALETTES["Dark" if _dark else "Light"]
+# --- Theme: follow Streamlit's native theme so the whole app (tables
+# included) switches together. Toggle it from the top-right ⋮ menu →
+# Settings → Theme. We mirror the active theme into our custom surfaces. ---
+def _active_theme() -> str:
+    try:
+        return "Dark" if st.context.theme.type == "dark" else "Light"
+    except Exception:
+        return "Light"
+
+
+PAL = PALETTES[_active_theme()]
 
 HERO_HTML = f"""
 <div class="dq-hero">
@@ -174,6 +180,7 @@ HERO_HTML = f"""
 
 st.markdown(build_css(PAL), unsafe_allow_html=True)
 st.markdown(HERO_HTML, unsafe_allow_html=True)
+st.caption("Tip: switch light / dark theme from the ⋮ menu (top-right) → Settings.")
 
 
 def gauge_html(score: float, label: str) -> str:
