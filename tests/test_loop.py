@@ -84,3 +84,24 @@ def test_loop_falls_back_to_heuristic_when_ai_dies(sample):
     )
     assert source == "heuristic"
     assert best is not None and len(history) == 1  # heuristic mode can't optimize further
+
+
+def test_heuristic_plan_is_strong(sample):
+    """The fallback plan must NOT be weak: without any LLM it must still fix
+    phones/dates/numbers (kinds are detected deterministically) and push the
+    score far above the raw baseline. Pins the '87 -> 88' embarrassment."""
+    from src.ops import apply_plan
+    from src.planner import build_heuristic_plan, validate_plan
+    from src.quality import quality_score
+
+    df, profile = sample
+    plan = build_heuristic_plan(profile, df)
+    valid, rejected = validate_plan(plan, df)
+    assert not rejected
+
+    clean, _ = apply_plan(df, valid)
+    score_before, _ = quality_score(df)
+    score_after, dims_after = quality_score(clean)
+    assert score_after >= 95
+    assert score_after - score_before >= 8
+    assert dims_after["validity"] >= 0.9
