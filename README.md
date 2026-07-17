@@ -81,7 +81,7 @@ Most data-quality tools break on Arabic. This system is built for it:
 ## Roadmap
 
 - [x] **Phase 0** — Repo, scaffolding, architecture design
-- [ ] **Phase 1** — MVP: upload → profile → single-pass LLM suggestions → apply → download
+- [x] **Phase 1** — MVP: upload → profile → LLM cleaning plan → human approval → apply → download (closed op-registry + plan validator live)
 - [ ] **Phase 2** — Evaluator–optimizer loop with live quality score
 - [ ] **Phase 3** — Human approval gate (per-operation review)
 - [ ] **Phase 4** — Arabic executive report (PDF/HTML) + audit log export
