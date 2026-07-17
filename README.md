@@ -60,7 +60,7 @@ Non-applicable dimensions are dropped and weights renormalized. The loop stops o
 - **Human-in-the-loop:** nothing is written without explicit approval; destructive ops approved individually
 - **No data loss:** original file is immutable; all work happens on copies; every op is reversible
 - **Append-only audit log:** every transformation recorded (op, params, rows affected, before/after) — the full recipe is replayable
-- **Privacy by design:** the LLM sees only masked samples and aggregate profiles, never the full dataset
+- **Privacy by design:** the LLM sees only aggregate profiles and a 5-row sample, never the full dataset
 
 ## Arabic-First 🇸🇦
 
@@ -77,19 +77,20 @@ Most data-quality tools break on Arabic. This system is built for it:
 | Layer | Choice |
 |---|---|
 | UI | Streamlit |
-| Agent loop | Python + LLM API (model-agnostic: Gemini / Claude) |
-| Data engine | pandas (all transformations — deterministic) |
-| Profiling | ydata-profiling + custom Arabic checks |
+| Agent loop | Python + Gemini API (model-agnostic design — swappable endpoint) |
+| Data engine | pandas (all transformations — deterministic, closed op registry) |
+| Profiling | Custom Arabic-aware profiler (pandas, fully vectorized) |
+| Tests | pytest — every reviewed bug is pinned by a test |
 | Deployment | Streamlit Community Cloud |
 
 ## Roadmap
 
 - [x] **Phase 0** — Repo, scaffolding, architecture design
-- [x] **Phase 1** — MVP: upload → profile → LLM cleaning plan → human approval → apply → download (closed op-registry + plan validator live)
-- [ ] **Phase 2** — Evaluator–optimizer loop with live quality score
-- [ ] **Phase 3** — Human approval gate (per-operation review)
-- [ ] **Phase 4** — Arabic executive report (PDF/HTML) + audit log export
-- [ ] **Phase 5** — Polish: demo video, Saudi open-data demo, tests
+- [x] **Phase 1** — MVP: upload (or one-click sample) → profile → LLM cleaning plan → per-op human approval → apply → download. Closed op-registry + plan validator + deterministic fallback plan + pytest suite live
+- [ ] **Phase 2** — Evaluator–optimizer loop with live quality score + validity/consistency dimensions
+- [ ] **Phase 3** — Per-op dry-run preview (see affected cells before approving)
+- [ ] **Phase 4** — Arabic executive report (HTML/RTL) + audit log export
+- [ ] **Phase 5** — Polish: demo video/GIF, Saudi open-data demo, CI badge
 
 ## Run Locally
 
