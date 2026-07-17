@@ -2,7 +2,11 @@
 
 **An AI multi-agent system that automatically repairs messy datasets using an evaluator–optimizer loop — Arabic-first.**
 
-> 🚧 **Status: In active development (Phase 1 of 5)** — scaffolding and core profiling. Roadmap below.
+### 🔴 Live demo: [data-quality-auto-fixer.streamlit.app](https://data-quality-auto-fixer.streamlit.app/)
+
+Try it now — upload [`data/samples/messy_customers_ar.csv`](data/samples/messy_customers_ar.csv) and watch the system profile it, propose an AI cleaning plan, and wait for your approval before touching anything.
+
+> ✅ **Phases 0–1 shipped** (MVP live) · 🚧 Phase 2 in progress (full evaluator–optimizer loop). Roadmap below.
 
 ---
 
