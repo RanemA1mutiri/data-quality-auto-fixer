@@ -188,7 +188,7 @@ with col_upload:
 with col_sample:
     st.write("")
     st.write("")
-    if st.button("Try with sample data (messy Arabic customers)", type="primary"):
+    if st.button(":material/science: Try with sample data (messy Arabic customers)", type="primary"):
         st.session_state["use_sample"] = True
 
 if uploaded is not None:
@@ -254,7 +254,7 @@ threshold = st.slider(
     "Target quality score (for the auto-optimize loop)", 85, 100, 95,
     help="The evaluator–optimizer loop keeps improving the plan until the measured score passes this threshold (max 3 iterations, best plan always kept).",
 )
-run_auto = st.button("Auto-optimize (evaluator–optimizer loop)", type="primary")
+run_auto = st.button(":material/autorenew: Auto-optimize (evaluator–optimizer loop)", type="primary")
 
 if run_auto:
     try:
@@ -320,7 +320,7 @@ if plan is not None:
 
     # --- Apply (deterministic pandas only) ---------------------------------
     st.subheader("3 · Apply & download")
-    if st.button(f"Apply {len(approved)} approved operations", disabled=not approved):
+    if st.button(f":material/check_circle: Apply {len(approved)} approved operations", disabled=not approved):
         clean, log = apply_plan(df, approved)
         score_after, dims_after = quality_score(clean)
         issues_after = profile_dataframe(clean)["issues"]
@@ -398,25 +398,25 @@ if result is not None:
 
     d1, d2, d3, d4 = st.columns(4)
     d1.download_button(
-        "Clean CSV",
+        ":material/table: Clean CSV",
         clean.to_csv(index=False).encode("utf-8-sig"),
         file_name=f"clean_{base_name}.csv",
         mime="text/csv",
     )
     d2.download_button(
-        "Clean Excel",
+        ":material/grid_on: Clean Excel",
         excel_buffer.getvalue(),
         file_name=f"clean_{base_name}.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     )
     d3.download_button(
-        "التقرير التنفيذي (عربي)",
+        ":material/description: التقرير التنفيذي (عربي)",
         report_html.encode("utf-8"),
         file_name=f"quality_report_{base_name}.html",
         mime="text/html",
     )
     d4.download_button(
-        "Audit log (JSON)",
+        ":material/data_object: Audit log (JSON)",
         json.dumps(log, ensure_ascii=False, indent=2).encode("utf-8"),
         file_name=f"audit_log_{base_name}.json",
         mime="application/json",
