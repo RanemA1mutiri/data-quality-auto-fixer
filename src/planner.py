@@ -4,10 +4,6 @@ Sends the LLM only: the computed profile (aggregate stats) + a few sample
 rows. Receives back a cleaning plan as strict JSON. Every plan item is
 validated against the closed op registry (op name, target column AND
 params keys) before anything can run.
-
-If the LLM is unavailable (free-tier quota, network), build_heuristic_plan
-produces a deterministic rule-based plan from the profile so the demo
-never dies.
 """
 
 from __future__ import annotations
@@ -52,47 +48,10 @@ def build_plan(profile: dict, df: pd.DataFrame, n_samples: int = 5) -> tuple[lis
     return validate_plan(parse_json_array(raw), df)
 
 
-def build_heuristic_plan(profile: dict, df: pd.DataFrame) -> list[dict]:
-    """Deterministic fallback plan (no LLM) — and a STRONG one:
-    column kinds (phone/date/numeric/text) are detected deterministically
-    by the Quality Judge, so the fallback can safely propose the semantic
-    fixes too. The demo never depends on the AI being up."""
-    from .quality import _detect_kind
-
-    plan = []
-    for col in profile["columns"]:
-        name = col["column"]
-        series = df[name]
-        kind = _detect_kind(name, series)
-        is_texty = pd.api.types.is_string_dtype(series) or series.dtype == object
-
-        if col["hidden_nulls"]:
-            plan.append({"op": "standardize_nulls", "column": name, "params": {},
-                         "reason": "قيم فارغة مخفية (N/A، -، غير معروف) تتحول لفراغات حقيقية"})
-        if col["hindi_numerals"]:
-            plan.append({"op": "unify_numerals", "column": name, "params": {},
-                         "reason": "توحيد الأرقام الهندية (٠-٩) مع الأرقام العربية (0-9)"})
-
-        if kind == "phone":
-            plan.append({"op": "normalize_phone_sa", "column": name, "params": {},
-                         "reason": "توحيد أرقام الجوال السعودية إلى الصيغة القياسية +966"})
-        elif kind == "date" and is_texty:
-            plan.append({"op": "parse_dates", "column": name, "params": {},
-                         "reason": "توحيد صيغ التواريخ المختلطة إلى ISO"})
-        elif kind == "numeric" and is_texty:
-            plan.append({"op": "to_numeric", "column": name, "params": {},
-                         "reason": "تحويل القيم النصية الرقمية إلى أرقام حقيقية"})
-        elif kind == "text" and is_texty:
-            if col["alef_variants"]:
-                plan.append({"op": "normalize_arabic_text", "column": name, "params": {},
-                             "reason": "توحيد أشكال الألف والهمزة لمنع التطابقات الخاطئة"})
-            plan.append({"op": "trim_whitespace", "column": name, "params": {},
-                         "reason": "إزالة المسافات الزائدة"})
-
-    if profile["duplicate_rows"]:
-        plan.append({"op": "drop_exact_duplicates", "column": None, "params": {},
-                     "reason": "إزالة الصفوف المكررة تماماً"})
-    return plan
+# NOTE (project owner's decision, 17 Jul 2026): this system is AI-only.
+# There is deliberately NO non-AI fallback planner — if the AI is
+# unavailable, the app stops with a clear message. The showcase IS the
+# agentic pattern; resilience lives in the model chain (src/llm.py).
 
 
 OPTIMIZER_TEMPLATE = """You are the Optimizer agent in a Data Quality Auto-Fixer (evaluator-optimizer loop).

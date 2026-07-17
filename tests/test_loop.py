@@ -35,20 +35,19 @@ def test_loop_stops_at_threshold_without_optimizer(sample):
     def never_called(*args, **kwargs):
         raise AssertionError("optimizer must not be called when threshold is reached")
 
-    best, history, rejected, source = run_loop(
+    best, history, rejected = run_loop(
         df, profile, threshold=90.0,
         planner_fn=lambda p, d: (GOLDEN_PLAN, []),
         optimizer_fn=never_called,
     )
     assert best is not None and best["score"] >= 90
     assert len(history) == 1
-    assert source == "ai"
 
 
 def test_loop_optimizer_improves_score(sample):
     """Weak first plan → optimizer returns the golden plan → score must climb."""
     df, profile = sample
-    best, history, rejected, source = run_loop(
+    best, history, rejected = run_loop(
         df, profile, threshold=99.5,
         planner_fn=lambda p, d: (PARTIAL_PLAN, []),
         optimizer_fn=lambda plan, weaknesses, p, d: GOLDEN_PLAN,
@@ -61,7 +60,7 @@ def test_loop_optimizer_improves_score(sample):
 def test_loop_keeps_best_on_stagnation(sample):
     """Optimizer that repeats the same plan → loop stops, best-so-far kept."""
     df, profile = sample
-    best, history, rejected, source = run_loop(
+    best, history, rejected = run_loop(
         df, profile, threshold=100.0,
         planner_fn=lambda p, d: (GOLDEN_PLAN, []),
         optimizer_fn=lambda plan, weaknesses, p, d: GOLDEN_PLAN,  # same plan again
@@ -70,38 +69,13 @@ def test_loop_keeps_best_on_stagnation(sample):
     assert round(best["score"], 1) == history[0]["score"]
 
 
-def test_loop_falls_back_to_heuristic_when_ai_dies(sample):
-    """Planner raising (quota out) must not kill the loop — heuristic plan used."""
+def test_loop_stops_when_ai_unavailable(sample):
+    """AI-only by design (owner's decision): a dead planner must RAISE —
+    the system never plans without AI, no silent fallback."""
     df, profile = sample
 
     def dead_planner(p, d):
         raise RuntimeError("quota exceeded")
 
-    best, history, rejected, source = run_loop(
-        df, profile, threshold=99.0,
-        planner_fn=dead_planner,
-        optimizer_fn=lambda *a, **k: GOLDEN_PLAN,
-    )
-    assert source == "heuristic"
-    assert best is not None and len(history) == 1  # heuristic mode can't optimize further
-
-
-def test_heuristic_plan_is_strong(sample):
-    """The fallback plan must NOT be weak: without any LLM it must still fix
-    phones/dates/numbers (kinds are detected deterministically) and push the
-    score far above the raw baseline. Pins the '87 -> 88' embarrassment."""
-    from src.ops import apply_plan
-    from src.planner import build_heuristic_plan, validate_plan
-    from src.quality import quality_score
-
-    df, profile = sample
-    plan = build_heuristic_plan(profile, df)
-    valid, rejected = validate_plan(plan, df)
-    assert not rejected
-
-    clean, _ = apply_plan(df, valid)
-    score_before, _ = quality_score(df)
-    score_after, dims_after = quality_score(clean)
-    assert score_after >= 95
-    assert score_after - score_before >= 8
-    assert dims_after["validity"] >= 0.9
+    with pytest.raises(RuntimeError, match="quota"):
+        run_loop(df, profile, planner_fn=dead_planner)

@@ -99,7 +99,7 @@ Most data-quality tools break on Arabic. This system is built for it:
 ## Roadmap
 
 - [x] **Phase 0** — Repo, scaffolding, architecture design
-- [x] **Phase 1** — MVP: upload (or one-click sample) → profile → LLM cleaning plan → per-op human approval → apply → download. Closed op-registry + plan validator + deterministic fallback plan + pytest suite live
+- [x] **Phase 1** — MVP: upload (or one-click sample) → profile → LLM cleaning plan → per-op human approval → apply → download. Closed op-registry + plan validator + pytest suite live. **AI-only by design:** if the AI is unavailable (model-chain exhausted), the system stops with a clear message — it never plans without AI
 - [x] **Phase 2a** — Validity & consistency dimensions with deterministic column-kind detection: cleaning now measurably raises the score (87 → 98 on the demo dataset)
 - [x] **Phase 2b** — Full evaluator–optimizer loop, live: Planner proposes → Executor applies (on copies) → Judge measures and emits a targeted weakness vector → Optimizer improves the plan → repeat. Stops on threshold / diminishing returns / stagnation / iteration cap, always keeping the best-so-far plan. Live iteration log in the UI
 - [x] **Phase 3** — Informed approval: per-op dry-run preview (affected count + real before→after examples on every checkbox) and changed-cell highlighting in the after view
