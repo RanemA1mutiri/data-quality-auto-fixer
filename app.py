@@ -131,8 +131,9 @@ html, body, [class*="css"] { font-family: 'Inter', 'IBM Plex Sans Arabic', sans-
   background: #FFFFFF; border: 1px solid #E6E8EB; border-radius: 12px;
   box-shadow: 0 1px 2px rgba(16,24,40,.04), 0 1px 3px rgba(16,24,40,.06);
   min-height: 150px; padding: 1rem 1.15rem;
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .5rem;
+  display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: .6rem;
 }
+.dq-gauge-card .dq-gauge-label { order: -1; font-weight: 400; }
 [data-testid="stMetric"] { min-height: 150px; display: flex; flex-direction: column; justify-content: center; }
 </style>
 """
@@ -292,7 +293,7 @@ def render_dimensions(dims: dict) -> None:
 
 
 st.subheader("1 · Profile")
-c1, c2, c3 = st.columns([1.2, 1, 1], vertical_alignment="center")
+c1, c2, c3 = st.columns(3, vertical_alignment="center")
 with c1:
     st.markdown(gauge_html(score_before, "Quality score", card=True), unsafe_allow_html=True)
 c2.metric("Rows", len(df))
