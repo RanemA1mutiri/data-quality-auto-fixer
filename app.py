@@ -139,9 +139,10 @@ html, body, [class*="css"] { font-family: 'Inter', 'IBM Plex Sans Arabic', sans-
 .dq-gauge-card .dq-gauge { width: 82px; height: 82px; }
 .dq-gauge-card .dq-gauge-inner { width: 64px; height: 64px; }
 .dq-gauge-card .dq-gauge-num { font-size: 1.35rem; }
-[data-testid="stMetric"] { box-sizing: border-box; height: 150px; display: flex; flex-direction: column; align-items: center; text-align: center; }
-[data-testid="stMetricLabel"] { justify-content: center; }
-[data-testid="stMetricValue"] { flex: 1; display: flex; align-items: center; justify-content: center; }
+/* Profile row: all three cards share the SAME markup/class, so they are always identical */
+.dq-metric-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; margin: .4rem 0 1rem; }
+.dq-card-value { flex: 1; display: flex; align-items: center; justify-content: center; font-size: 2rem; font-weight: 600; color: #1A1D24; }
+[data-testid="stMetric"] { min-height: 150px; display: flex; flex-direction: column; justify-content: center; }
 </style>
 """
 
@@ -188,6 +189,17 @@ def gauge_html(score: float, label: str, card: bool = False) -> str:
             f'</div>'
         )
     return f'<div class="dq-gauge-wrap">{gauge}<div class="dq-gauge-label">{label}</div></div>'
+
+
+def metric_card_html(label: str, value) -> str:
+    """A number card using the exact same card class as the gauge card, so the
+    three profile cards are guaranteed identical in size and structure."""
+    return (
+        f'<div class="dq-gauge-card">'
+        f'<div class="dq-gauge-label">{label}</div>'
+        f'<div class="dq-card-value">{value}</div>'
+        f'</div>'
+    )
 
 
 # --- Safe file loading -----------------------------------------------------
@@ -307,11 +319,14 @@ def render_dimensions(dims: dict) -> None:
 
 
 st.subheader("1 · Profile")
-c1, c2, c3 = st.columns(3, vertical_alignment="center")
-with c1:
-    st.markdown(gauge_html(score_before, "Quality score", card=True), unsafe_allow_html=True)
-c2.metric("Rows", len(df))
-c3.metric("Issues detected", len(profile["issues"]))
+st.markdown(
+    '<div class="dq-metric-row">'
+    + gauge_html(score_before, "Quality score", card=True)
+    + metric_card_html("Rows", len(df))
+    + metric_card_html("Issues detected", len(profile["issues"]))
+    + "</div>",
+    unsafe_allow_html=True,
+)
 with st.expander("Quality dimensions (computed, never generated)", expanded=True):
     render_dimensions(dims_before)
 
