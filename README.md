@@ -22,7 +22,7 @@ Existing tools either **detect** problems (Great Expectations) or hand you **man
 
 Upload a messy CSV → the system profiles it, proposes cleaning transformations, **scores the result numerically**, and iterates until quality passes a threshold — with **human approval required before any change is applied**.
 
-The output is a number — **measured, never generated**. On the demo dataset the system raises the overall quality score from **87 → 98**, with the validity dimension jumping from **67% → 98%** (phones normalized to +966 E.164, mixed dates to ISO, amounts to real numbers). Plus: a clean file and a full audit log of every change.
+The output is a number — **measured, never generated**. On the demo dataset the system raises the overall quality score from **83 → 97**, with the validity dimension jumping from **59% → 97%** (phones normalized to +966 E.164, mixed dates to ISO, amounts to real numbers). Plus: a clean file and a full audit log of every change. *(Reproduce it: `pytest` — `test_end_to_end_sample_file` asserts the score rises.)*
 
 ## What it fixes — real output from the demo dataset
 
@@ -42,12 +42,11 @@ The output is a number — **measured, never generated**. On the demo dataset th
 ```mermaid
 flowchart TD
     A[📄 Messy CSV/Excel] --> B["1 · Profiler<br/>(pandas — deterministic)"]
-    B --> C["2 · Semantic Inferrer<br/>(LLM: column meaning + rules)"]
-    C --> D["3 · Rule Planner<br/>(LLM: cleaning plan as JSON)"]
+    B --> D["2 · Rule Planner<br/>(LLM: cleaning plan as JSON)"]
     D --> V["Plan Validator<br/>(code: whitelist + schema)"]
-    V --> E["4 · Executor<br/>(pandas on a copy + change-log)"]
-    E --> F["5 · Quality Judge<br/>(code computes 6-dimension score,<br/>LLM narrates weaknesses)"]
-    F -->|score < threshold| G["6 · Optimizer<br/>(LLM: targeted plan improvements)"]
+    V --> E["3 · Executor<br/>(pandas on a copy + change-log)"]
+    E --> F["4 · Quality Judge<br/>(code computes the quality score,<br/>LLM narrates weaknesses)"]
+    F -->|score < threshold| G["5 · Optimizer<br/>(LLM: targeted plan improvements)"]
     G --> D
     F -->|score ≥ threshold| H["🧍 Human Approval Gate"]
     H --> I[✅ Clean file + Arabic report + audit log]
@@ -55,7 +54,7 @@ flowchart TD
 
 ### Quality Score (computed, never generated)
 
-Six standard dimensions, each measured in code and normalized to [0, 1], combined as a weighted sum:
+Standard data-quality dimensions, each measured in code and normalized to [0, 1], combined as a weighted sum. Four are live today; two are on the roadmap:
 
 | Dimension | Formula | Status |
 |---|---|---|
@@ -100,7 +99,7 @@ Most data-quality tools break on Arabic. This system is built for it:
 
 - [x] **Phase 0** — Repo, scaffolding, architecture design
 - [x] **Phase 1** — MVP: upload (or one-click sample) → profile → LLM cleaning plan → per-op human approval → apply → download. Closed op-registry + plan validator + pytest suite live. **AI-only by design:** if the AI is unavailable (model-chain exhausted), the system stops with a clear message — it never plans without AI
-- [x] **Phase 2a** — Validity & consistency dimensions with deterministic column-kind detection: cleaning now measurably raises the score (87 → 98 on the demo dataset)
+- [x] **Phase 2a** — Validity & consistency dimensions with deterministic column-kind detection: cleaning now measurably raises the score (83 → 97 on the demo dataset)
 - [x] **Phase 2b** — Full evaluator–optimizer loop, live: Planner proposes → Executor applies (on copies) → Judge measures and emits a targeted weakness vector → Optimizer improves the plan → repeat. Stops on threshold / diminishing returns / stagnation / iteration cap, always keeping the best-so-far plan. Live iteration log in the UI
 - [x] **Phase 3** — Informed approval: per-op dry-run preview (affected count + real before→after examples on every checkbox) and changed-cell highlighting in the after view
 - [x] **Phase 4** — Arabic executive report (self-contained RTL HTML, print-to-PDF, every number computed & every sentence a code template — zero LLM) + full export row: clean CSV, clean Excel, report, audit log JSON

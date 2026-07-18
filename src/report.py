@@ -33,7 +33,8 @@ OP_AR = {
 
 
 def _score_color(score: float) -> str:
-    return "#2f9e44" if score >= 80 else "#e8590c" if score >= 50 else "#c92a2a"
+    # thresholds unified with the app gauge (90 / 65)
+    return "#0F8A45" if score >= 90 else "#CC7309" if score >= 65 else "#D13A3F"
 
 
 def build_report(

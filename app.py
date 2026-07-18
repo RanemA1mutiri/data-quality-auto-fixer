@@ -1,8 +1,8 @@
 """Data Quality Auto-Fixer — Streamlit entry point.
 
-Flow: upload (or one-click sample) → profile → AI cleaning plan (with a
-deterministic fallback if the LLM is unavailable) → per-op human approval →
-deterministic apply (pandas) → before/after score → audit log → download.
+Flow: upload (or one-click sample) → profile → AI cleaning plan → per-op
+human approval → deterministic apply (pandas) → before/after score →
+audit log → download.
 
 Core principle: the LLM never touches the data — it proposes a plan from
 a closed op registry; pandas executes; scores are always computed.
@@ -60,6 +60,7 @@ THEME_CSS = """
 html, body, [class*="css"] { font-family: 'Inter', 'IBM Plex Sans Arabic', sans-serif; }
 
 .stApp { background: #FBFBFD; }
+[data-testid="stMainBlockContainer"] { padding-top: 2.5rem; max-width: 1180px; }
 
 /* Hero */
 .dq-hero { padding: .5rem 0 1.4rem; }
@@ -165,26 +166,57 @@ def gauge_html(score: float, label: str) -> str:
 
 # --- Safe file loading -----------------------------------------------------
 
+def _dedupe_columns(df: pd.DataFrame) -> pd.DataFrame:
+    """Rename duplicate column names (name, name.1, name.2 ...) so every
+    df[col] is a Series — duplicate headers otherwise crash all profiling."""
+    if not df.columns.duplicated().any():
+        return df
+    seen: dict[str, int] = {}
+    new_cols = []
+    for col in df.columns:
+        if col in seen:
+            seen[col] += 1
+            new_cols.append(f"{col}.{seen[col]}")
+        else:
+            seen[col] = 0
+            new_cols.append(col)
+    df = df.copy()
+    df.columns = new_cols
+    return df
+
+
 def load_dataframe(uploaded) -> pd.DataFrame | None:
-    """Read CSV/Excel defensively: encodings, empty files, bad extensions."""
+    """Read CSV/Excel defensively: encodings, empty files, bad extensions,
+    duplicate column names."""
     name = uploaded.name.lower()
+    df = None
     try:
         if name.endswith(".csv"):
             for encoding in ("utf-8-sig", "utf-8", "cp1256"):
                 try:
                     uploaded.seek(0)
-                    return pd.read_csv(uploaded, encoding=encoding)
+                    df = pd.read_csv(uploaded, encoding=encoding)
+                    break
                 except UnicodeDecodeError:
                     continue
-            st.error("تعذّرت قراءة ترميز الملف — جرّبي حفظه بترميز UTF-8 من Excel (CSV UTF-8).")
-            return None
-        uploaded.seek(0)
-        return pd.read_excel(uploaded)
+            if df is None:
+                st.error("تعذّرت قراءة ترميز الملف — جرّبي حفظه بترميز UTF-8 من Excel (CSV UTF-8).")
+                return None
+        else:
+            uploaded.seek(0)
+            df = pd.read_excel(uploaded)
     except pd.errors.EmptyDataError:
         st.error("الملف فارغ — ما فيه بيانات تُقرأ.")
+        return None
     except Exception as e:
         st.error(f"تعذّرت قراءة الملف: {e}")
-    return None
+        return None
+
+    df = _dedupe_columns(df)
+    if df.columns.duplicated().any():  # belt-and-suspenders
+        st.error("الملف فيه أعمدة بأسماء مكررة يصعب التعامل معها — أعيدي تسميتها.")
+        return None
+    return df
 
 
 # --- Input: upload OR one-click sample -------------------------------------
@@ -222,8 +254,18 @@ if st.session_state.get("file_id") != file_id:
         st.session_state.pop(key, None)
     st.session_state["file_id"] = file_id
 
-score_before, dims_before = quality_score(df)
-profile = profile_dataframe(df)
+@st.cache_data(show_spinner=False)
+def cached_profile(_df, key):  # key drives the cache; _df is not re-hashed
+    return profile_dataframe(_df)
+
+
+@st.cache_data(show_spinner=False)
+def cached_score(_df, key):
+    return quality_score(_df)
+
+
+profile = cached_profile(df, file_id)
+score_before, dims_before = cached_score(df, file_id)
 
 DIM_LABELS = {
     "completeness": "Completeness — non-empty cells",
@@ -239,7 +281,7 @@ def render_dimensions(dims: dict) -> None:
 
 
 st.subheader("1 · Profile")
-c1, c2, c3 = st.columns([1.2, 1, 1])
+c1, c2, c3 = st.columns([1.2, 1, 1], vertical_alignment="center")
 with c1:
     st.markdown(gauge_html(score_before, "Quality score"), unsafe_allow_html=True)
 c2.metric("Rows", len(df))
@@ -255,7 +297,7 @@ if profile["issues"]:
         for issue in profile["issues"]:
             st.warning(issue)
 
-# --- Plan (LLM proposes; heuristic fallback keeps the demo alive) ----------
+# --- Plan (LLM proposes; deterministic pandas executes) --------------------
 
 st.subheader("2 · Cleaning plan (AI-proposed, you approve)")
 st.caption("Privacy: the AI sees only aggregate statistics and 5 sample rows — never your full dataset.")
@@ -288,6 +330,11 @@ if history:
         st.success(
             f"Score climbed {history[0]['score']:.0f} → {max(h['score'] for h in history):.0f} "
             f"across {len(history)} iterations — showing the winning plan below."
+        )
+    else:
+        st.info(
+            f"Converged in 1 pass — the planner's first proposal already met the target "
+            f"(score {history[0]['score']:.0f}). The optimizer only re-plans when a weakness remains."
         )
 
 plan = st.session_state.get("plan")
@@ -443,4 +490,4 @@ if result is not None:
         )
 
 st.divider()
-st.caption("Roadmap: Phase 3 — per-op dry-run preview · Phase 4 — Arabic executive report + audit export.")
+st.caption("Built with: a multi-agent evaluator–optimizer loop · deterministic pandas execution · a closed, validated operation registry · human-in-the-loop approval.")

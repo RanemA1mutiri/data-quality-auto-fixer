@@ -167,11 +167,14 @@ def to_numeric(df: pd.DataFrame, column: str) -> tuple[pd.DataFrame, int]:
     nums = pd.to_numeric(cleaned, errors="coerce")
 
     mask = nums.notna()
-    new = df[column].astype(object).copy()
-    new[mask] = nums[mask].astype(float)
     affected = int(mask.sum())
     df = df.copy()
-    df[column] = new
+    if bool(mask.all()) and affected:
+        df[column] = nums.astype("float64")  # all converted → clean numeric column
+    else:
+        new = df[column].astype(object).copy()
+        new[mask] = nums[mask].astype(float)
+        df[column] = new
     return df, affected
 
 

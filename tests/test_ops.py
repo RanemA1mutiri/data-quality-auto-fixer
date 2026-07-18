@@ -4,7 +4,6 @@ Run: pytest tests/ -v
 """
 
 import pandas as pd
-import pytest
 
 from src.ops import (
     apply_plan,
@@ -207,3 +206,46 @@ def test_report_is_valid_rtl_html():
     assert "توحيد أرقام الجوال السعودية" in html_out    # Arabic op label
     assert f"{s_a:.0f}" in html_out                     # computed score present
     assert "محسوبة برمجيًا" in html_out                 # the philosophy, stated
+
+
+# --- 8. gaps flagged in final audit: map_values, drop_dups, weakness, parse ---
+
+def test_map_values_and_drop_duplicates():
+    from src.ops import drop_exact_duplicates, map_values
+
+    df = pd.DataFrame({"city": ["الرياض", "الریاض", "جدة"]})
+    out, affected = map_values(df, "city", {"الریاض": "الرياض"})
+    assert list(out["city"]) == ["الرياض", "الرياض", "جدة"]
+    assert affected == 1
+
+    dup = pd.DataFrame({"a": [1, 1, 2], "b": ["x", "x", "y"]})
+    out2, removed = drop_exact_duplicates(dup)
+    assert removed == 1 and len(out2) == 2
+
+
+def test_weakness_report_targets_real_gaps():
+    from src.quality import weakness_report
+
+    df = pd.DataFrame({"mobile": ["0501234567", "bad", "05"]})  # 2 invalid phones
+    report = weakness_report(df)
+    mob = next((r for r in report if r["column"] == "mobile"), None)
+    assert mob is not None and "invalid_values" in mob
+    assert mob["invalid_values"]["count"] >= 1
+    assert mob["invalid_values"]["expected_format"] == "+9665XXXXXXXX"
+
+
+def test_parse_json_array_tolerates_prose_and_fences():
+    from src.planner import parse_json_array
+
+    assert parse_json_array('```json\n[{"op":"trim_whitespace"}]\n```')[0]["op"] == "trim_whitespace"
+    # prose containing a stray '[' before the real array must not break parsing
+    raw = 'Here is the plan [step 1]: [{"op":"unify_numerals","column":"c"}]'
+    parsed = parse_json_array(raw)
+    assert parsed[-1]["op"] == "unify_numerals"
+
+
+def test_to_numeric_all_convert_yields_float_dtype():
+    df = pd.DataFrame({"n": ["10", "٢٠", "30.5"]})
+    out, affected = to_numeric(df, "n")
+    assert affected == 3
+    assert pd.api.types.is_numeric_dtype(out["n"])

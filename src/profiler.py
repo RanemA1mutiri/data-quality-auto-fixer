@@ -1,9 +1,8 @@
 """Deterministic data profiler — pure pandas, no LLM.
 
-Produces the structured profile that later feeds the Semantic Inferrer
-and the Rule Planner (LLM agents). Numbers here are always computed,
-never generated. All checks are vectorized and safe on empty/all-null
-columns.
+Produces the structured profile that feeds the Rule Planner (the LLM agent).
+Numbers here are always computed, never generated. All checks are vectorized
+and safe on empty / all-null columns.
 """
 
 from __future__ import annotations
