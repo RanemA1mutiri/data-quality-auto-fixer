@@ -126,15 +126,22 @@ html, body, [class*="css"] { font-family: 'Inter', 'IBM Plex Sans Arabic', sans-
 .dq-gauge-label { color: #5A6472; font-size: .9rem; font-weight: 500; }
 .dq-arrow { color: #98A2B3; display: flex; align-items: center; }
 
-/* Gauge as a card — matches the Rows / Issues metric cards exactly */
+/* Gauge as a card — matches the Rows / Issues metric cards exactly:
+   label pinned top-left, content centered in the body below, same 150px height. */
 .dq-gauge-card {
   background: #FFFFFF; border: 1px solid #E6E8EB; border-radius: 12px;
   box-shadow: 0 1px 2px rgba(16,24,40,.04), 0 1px 3px rgba(16,24,40,.06);
-  min-height: 150px; padding: 1rem 1.15rem;
-  display: flex; flex-direction: column; align-items: flex-start; justify-content: flex-start; gap: .55rem;
+  height: 150px; padding: 1rem 1.15rem;
+  display: flex; flex-direction: column; align-items: stretch;
 }
-.dq-gauge-card .dq-gauge-label { order: -1; font-weight: 400; }
-[data-testid="stMetric"] { min-height: 150px; display: flex; flex-direction: column; justify-content: flex-start; }
+.dq-gauge-card .dq-gauge-label { font-weight: 400; text-align: center; }
+.dq-gauge-body { flex: 1; display: flex; align-items: center; justify-content: center; }
+.dq-gauge-card .dq-gauge { width: 82px; height: 82px; }
+.dq-gauge-card .dq-gauge-inner { width: 64px; height: 64px; }
+.dq-gauge-card .dq-gauge-num { font-size: 1.35rem; }
+[data-testid="stMetric"] { height: 150px; display: flex; flex-direction: column; align-items: center; text-align: center; }
+[data-testid="stMetricLabel"] { justify-content: center; }
+[data-testid="stMetricValue"] { flex: 1; display: flex; align-items: center; justify-content: center; }
 </style>
 """
 
@@ -166,14 +173,21 @@ def gauge_html(score: float, label: str, card: bool = False) -> str:
     card=True wraps it in a bordered card matching the metric cards."""
     pct = max(0.0, min(100.0, score))
     color = "#0F8A45" if pct >= 90 else "#CC7309" if pct >= 65 else "#D13A3F"
-    inner = (
+    gauge = (
         f'<div class="dq-gauge" style="background: conic-gradient({color} {pct * 3.6}deg, #EAECF0 0deg);">'
         f'<div class="dq-gauge-inner"><div class="dq-gauge-num">{pct:.0f}</div>'
         f'<div class="dq-gauge-sub">/100</div></div></div>'
-        f'<div class="dq-gauge-label">{label}</div>'
     )
-    wrap = "dq-gauge-card" if card else "dq-gauge-wrap"
-    return f'<div class="{wrap}">{inner}</div>'
+    if card:
+        # Card mode: label pinned top-left, gauge centered in the body below —
+        # mirrors the Rows / Issues metric cards (aligned labels, centered content).
+        return (
+            f'<div class="dq-gauge-card">'
+            f'<div class="dq-gauge-label">{label}</div>'
+            f'<div class="dq-gauge-body">{gauge}</div>'
+            f'</div>'
+        )
+    return f'<div class="dq-gauge-wrap">{gauge}<div class="dq-gauge-label">{label}</div></div>'
 
 
 # --- Safe file loading -----------------------------------------------------
