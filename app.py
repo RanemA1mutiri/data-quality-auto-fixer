@@ -286,7 +286,7 @@ with c1:
     st.markdown(gauge_html(score_before, "Quality score"), unsafe_allow_html=True)
 c2.metric("Rows", len(df))
 c3.metric("Issues detected", len(profile["issues"]))
-with st.expander("Quality dimensions (computed, never generated)"):
+with st.expander("Quality dimensions (computed, never generated)", expanded=True):
     render_dimensions(dims_before)
 
 with st.expander(f"Preview — {source_name}", expanded=True):
