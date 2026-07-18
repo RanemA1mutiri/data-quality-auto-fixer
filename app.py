@@ -114,17 +114,20 @@ html, body, [class*="css"] { font-family: 'Inter', 'IBM Plex Sans Arabic', sans-
 .dq-gauge-row { display: flex; gap: 2rem; align-items: center; flex-wrap: wrap; margin: .4rem 0 1rem; }
 .dq-gauge-wrap { display: flex; flex-direction: column; align-items: center; gap: .6rem; }
 .dq-gauge {
-  width: 148px; height: 148px; border-radius: 50%;
+  width: 118px; height: 118px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
 }
 .dq-gauge-inner {
-  width: 116px; height: 116px; border-radius: 50%; background: #FBFBFD;
+  width: 92px; height: 92px; border-radius: 50%; background: #FBFBFD;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
 }
-.dq-gauge-num { font-size: 2.25rem; font-weight: 600; line-height: 1.05; color: #1A1D24; }
-.dq-gauge-sub { color: #98A2B3; font-size: .85rem; }
+.dq-gauge-num { font-size: 1.85rem; font-weight: 700; line-height: 1.05; color: #1A1D24; }
+.dq-gauge-sub { color: #98A2B3; font-size: .8rem; }
 .dq-gauge-label { color: #5A6472; font-size: .92rem; font-weight: 500; }
 .dq-arrow { color: #98A2B3; display: flex; align-items: center; }
+
+/* Balance the profile row: cards match the gauge's presence */
+[data-testid="stMetric"] { min-height: 118px; display: flex; flex-direction: column; justify-content: center; }
 </style>
 """
 
