@@ -1,19 +1,39 @@
 """Rule Planner agent — the LLM proposes, the validator disposes.
 
-Sends the LLM only: the computed profile (aggregate stats) + a few sample
-rows. Receives back a cleaning plan as strict JSON. Every plan item is
-validated against the closed op registry (op name, target column AND
-params keys) before anything can run.
+Sends the LLM only: the computed profile (aggregate stats) + a few
+PII-masked sample rows. Receives back a cleaning plan as strict JSON.
+Every plan item is validated against the closed op registry (op name,
+target column AND params keys) before anything can run.
 """
 
 from __future__ import annotations
 
 import json
+import re
 
 import pandas as pd
 
 from .llm import generate
 from .ops import REGISTRY
+
+# Columns whose values are personally identifying — masked before any value
+# leaves the machine for the LLM. The LLM only needs the *shape* of a value
+# (which digits/letters vary), never the real name or phone number.
+_PII_HINTS = ("name", "اسم", "mobile", "phone", "جوال", "هاتف", "email", "بريد",
+              "id", "هوية", "iban", "حساب", "address", "عنوان")
+
+
+def _mask_sample(df: pd.DataFrame, n: int) -> str:
+    """Return n sample rows as JSON with PII columns shape-masked
+    (digits→#, Arabic/Latin letters→x) so no real identifier is sent."""
+    sample = df.head(n).copy()
+    for col in sample.columns:
+        if any(h in str(col).lower() for h in _PII_HINTS):
+            sample[col] = sample[col].map(
+                lambda v: v if pd.isna(v) else re.sub(r"[A-Za-zء-ي]", "x",
+                                                      re.sub(r"\d", "#", str(v)))
+            )
+    return sample.to_json(orient="records", force_ascii=False)
 
 PROMPT_TEMPLATE = """You are the Rule Planner agent in a Data Quality Auto-Fixer system.
 Based on the data profile below, propose a cleaning plan.
@@ -42,7 +62,7 @@ def build_plan(profile: dict, df: pd.DataFrame, n_samples: int = 5) -> tuple[lis
         op_descriptions="; ".join(f"{k}: {v['desc']}" for k, v in REGISTRY.items()),
         profile_json=json.dumps(profile, ensure_ascii=False, default=str),
         n_samples=n_samples,
-        sample_json=df.head(n_samples).to_json(orient="records", force_ascii=False),
+        sample_json=_mask_sample(df, n_samples),
     )
     raw = generate(prompt)
     return validate_plan(parse_json_array(raw), df)
@@ -92,11 +112,41 @@ def optimize_plan(prev_plan: list[dict], weaknesses: list[dict], profile: dict, 
 
 
 def parse_json_array(raw: str) -> list[dict]:
-    """Extract the first JSON array from the LLM reply (tolerates fences/prose)."""
-    start, end = raw.find("["), raw.rfind("]")
-    if start == -1 or end == -1:
-        raise ValueError(f"No JSON array in LLM reply: {raw[:200]}")
-    return json.loads(raw[start : end + 1])
+    """Extract the JSON array from the LLM reply, tolerant of fences/prose.
+
+    Scans for a bracket-balanced [...] (ignoring brackets inside strings)
+    rather than naive first-[/last-], so prose containing '[' doesn't break it.
+    """
+    text = raw.strip()
+    if text.startswith("```"):  # strip markdown fences
+        text = re.sub(r"^```[a-zA-Z]*\n?|\n?```$", "", text).strip()
+    depth = start = 0
+    in_str = escape = False
+    for i, ch in enumerate(text):
+        if in_str:
+            if escape:
+                escape = False
+            elif ch == "\\":
+                escape = True
+            elif ch == '"':
+                in_str = False
+            continue
+        if ch == '"':
+            in_str = True
+        elif ch == "[":
+            if depth == 0:
+                start = i
+            depth += 1
+        elif ch == "]":
+            depth -= 1
+            if depth == 0:
+                # Return the first balanced array that is valid JSON — prose
+                # like "[step 1]" scans as balanced but won't parse, so skip it.
+                try:
+                    return json.loads(text[start : i + 1])
+                except json.JSONDecodeError:
+                    continue
+    raise ValueError(f"No JSON array in LLM reply: {raw[:200]}")
 
 
 def validate_plan(plan: list[dict], df: pd.DataFrame) -> tuple[list[dict], list[str]]:
