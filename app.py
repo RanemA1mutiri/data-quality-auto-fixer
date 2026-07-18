@@ -114,20 +114,26 @@ html, body, [class*="css"] { font-family: 'Inter', 'IBM Plex Sans Arabic', sans-
 .dq-gauge-row { display: flex; gap: 2rem; align-items: center; flex-wrap: wrap; margin: .4rem 0 1rem; }
 .dq-gauge-wrap { display: flex; flex-direction: column; align-items: center; gap: .6rem; }
 .dq-gauge {
-  width: 118px; height: 118px; border-radius: 50%;
+  width: 96px; height: 96px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
 }
 .dq-gauge-inner {
-  width: 92px; height: 92px; border-radius: 50%; background: #FBFBFD;
+  width: 74px; height: 74px; border-radius: 50%; background: #FFFFFF;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
 }
-.dq-gauge-num { font-size: 1.85rem; font-weight: 700; line-height: 1.05; color: #1A1D24; }
-.dq-gauge-sub { color: #98A2B3; font-size: .8rem; }
-.dq-gauge-label { color: #5A6472; font-size: .92rem; font-weight: 500; }
+.dq-gauge-num { font-size: 1.55rem; font-weight: 700; line-height: 1.05; color: #1A1D24; }
+.dq-gauge-sub { color: #98A2B3; font-size: .75rem; }
+.dq-gauge-label { color: #5A6472; font-size: .9rem; font-weight: 500; }
 .dq-arrow { color: #98A2B3; display: flex; align-items: center; }
 
-/* Balance the profile row: cards match the gauge's presence */
-[data-testid="stMetric"] { min-height: 118px; display: flex; flex-direction: column; justify-content: center; }
+/* Gauge as a card — matches the Rows / Issues metric cards exactly */
+.dq-gauge-card {
+  background: #FFFFFF; border: 1px solid #E6E8EB; border-radius: 12px;
+  box-shadow: 0 1px 2px rgba(16,24,40,.04), 0 1px 3px rgba(16,24,40,.06);
+  min-height: 150px; padding: 1rem 1.15rem;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .5rem;
+}
+[data-testid="stMetric"] { min-height: 150px; display: flex; flex-direction: column; justify-content: center; }
 </style>
 """
 
@@ -154,17 +160,19 @@ st.markdown(THEME_CSS, unsafe_allow_html=True)
 st.markdown(HERO_HTML, unsafe_allow_html=True)
 
 
-def gauge_html(score: float, label: str) -> str:
-    """Circular quality gauge — pure CSS conic-gradient, no external libs."""
+def gauge_html(score: float, label: str, card: bool = False) -> str:
+    """Circular quality gauge — pure CSS conic-gradient, no external libs.
+    card=True wraps it in a bordered card matching the metric cards."""
     pct = max(0.0, min(100.0, score))
     color = "#0F8A45" if pct >= 90 else "#CC7309" if pct >= 65 else "#D13A3F"
-    return (
-        f'<div class="dq-gauge-wrap">'
+    inner = (
         f'<div class="dq-gauge" style="background: conic-gradient({color} {pct * 3.6}deg, #EAECF0 0deg);">'
         f'<div class="dq-gauge-inner"><div class="dq-gauge-num">{pct:.0f}</div>'
         f'<div class="dq-gauge-sub">/100</div></div></div>'
-        f'<div class="dq-gauge-label">{label}</div></div>'
+        f'<div class="dq-gauge-label">{label}</div>'
     )
+    wrap = "dq-gauge-card" if card else "dq-gauge-wrap"
+    return f'<div class="{wrap}">{inner}</div>'
 
 
 # --- Safe file loading -----------------------------------------------------
@@ -286,7 +294,7 @@ def render_dimensions(dims: dict) -> None:
 st.subheader("1 · Profile")
 c1, c2, c3 = st.columns([1.2, 1, 1], vertical_alignment="center")
 with c1:
-    st.markdown(gauge_html(score_before, "Quality score"), unsafe_allow_html=True)
+    st.markdown(gauge_html(score_before, "Quality score", card=True), unsafe_allow_html=True)
 c2.metric("Rows", len(df))
 c3.metric("Issues detected", len(profile["issues"]))
 with st.expander("Quality dimensions (computed, never generated)", expanded=True):
