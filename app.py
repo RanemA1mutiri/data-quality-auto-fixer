@@ -131,7 +131,7 @@ html, body, [class*="css"] { font-family: 'Inter', 'IBM Plex Sans Arabic', sans-
 .dq-gauge-card {
   background: #FFFFFF; border: 1px solid #E6E8EB; border-radius: 12px;
   box-shadow: 0 1px 2px rgba(16,24,40,.04), 0 1px 3px rgba(16,24,40,.06);
-  height: 150px; padding: 1rem 1.15rem;
+  box-sizing: border-box; height: 150px; padding: 1rem 1.15rem;
   display: flex; flex-direction: column; align-items: stretch;
 }
 .dq-gauge-card .dq-gauge-label { font-weight: 400; text-align: center; }
@@ -139,7 +139,7 @@ html, body, [class*="css"] { font-family: 'Inter', 'IBM Plex Sans Arabic', sans-
 .dq-gauge-card .dq-gauge { width: 82px; height: 82px; }
 .dq-gauge-card .dq-gauge-inner { width: 64px; height: 64px; }
 .dq-gauge-card .dq-gauge-num { font-size: 1.35rem; }
-[data-testid="stMetric"] { height: 150px; display: flex; flex-direction: column; align-items: center; text-align: center; }
+[data-testid="stMetric"] { box-sizing: border-box; height: 150px; display: flex; flex-direction: column; align-items: center; text-align: center; }
 [data-testid="stMetricLabel"] { justify-content: center; }
 [data-testid="stMetricValue"] { flex: 1; display: flex; align-items: center; justify-content: center; }
 </style>
