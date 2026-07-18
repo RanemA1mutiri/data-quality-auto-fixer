@@ -131,10 +131,10 @@ html, body, [class*="css"] { font-family: 'Inter', 'IBM Plex Sans Arabic', sans-
   background: #FFFFFF; border: 1px solid #E6E8EB; border-radius: 12px;
   box-shadow: 0 1px 2px rgba(16,24,40,.04), 0 1px 3px rgba(16,24,40,.06);
   min-height: 150px; padding: 1rem 1.15rem;
-  display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: .6rem;
+  display: flex; flex-direction: column; align-items: flex-start; justify-content: flex-start; gap: .55rem;
 }
 .dq-gauge-card .dq-gauge-label { order: -1; font-weight: 400; }
-[data-testid="stMetric"] { min-height: 150px; display: flex; flex-direction: column; justify-content: center; }
+[data-testid="stMetric"] { min-height: 150px; display: flex; flex-direction: column; justify-content: flex-start; }
 </style>
 """
 
