@@ -126,6 +126,15 @@ html, body, [class*="css"] { font-family: 'Inter', 'IBM Plex Sans Arabic', sans-
 .dq-gauge-label { color: #5A6472; font-size: .9rem; font-weight: 500; }
 .dq-arrow { color: #98A2B3; display: flex; align-items: center; }
 
+/* Before → After comparison, wrapped in a card so it matches the card system
+   instead of floating naked, and centered with breathing room. */
+.dq-result-card {
+  box-sizing: border-box; background: #FFFFFF; border: 1px solid #E6E8EB; border-radius: 12px;
+  box-shadow: 0 1px 2px rgba(16,24,40,.04), 0 1px 3px rgba(16,24,40,.06);
+  padding: 1.75rem 1.5rem; margin: .4rem 0 1rem;
+  display: flex; align-items: center; justify-content: center; gap: 3rem; flex-wrap: wrap;
+}
+
 /* Gauge as a card — matches the Rows / Issues metric cards exactly:
    label pinned top-left, content centered in the body below, same 150px height. */
 .dq-gauge-card {
@@ -442,7 +451,7 @@ if result is not None:
     score_after, issues_after = result["score_after"], result["issues_after"]
 
     st.markdown(
-        '<div class="dq-gauge-row">'
+        '<div class="dq-result-card">'
         + gauge_html(score_before, "Before")
         + f'<div class="dq-arrow">{icon("arrow-right", 24)}</div>'
         + gauge_html(score_after, "After")
