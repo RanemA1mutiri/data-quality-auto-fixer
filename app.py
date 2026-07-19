@@ -110,6 +110,16 @@ html, body, [class*="css"] { font-family: 'Inter', 'IBM Plex Sans Arabic', sans-
 /* Expanders */
 [data-testid="stExpander"] { border: 1px solid #E6E8EB; border-radius: 12px; background: #FFFFFF; }
 
+/* The "Detected issues" expander (the only one holding alerts): its header uses the
+   exact same warning yellow as the rows inside, so the block reads as one piece. */
+[data-testid="stExpander"]:has([data-testid="stAlert"]) { overflow: hidden; }
+[data-testid="stExpander"]:has([data-testid="stAlert"]) summary { background: #FEF9E7; }
+[data-testid="stExpander"]:has([data-testid="stAlert"]) [data-testid="stAlert"] { background: #FEF9E7; }
+[data-testid="stExpander"]:has([data-testid="stAlert"]) summary,
+[data-testid="stExpander"]:has([data-testid="stAlert"]) summary *,
+[data-testid="stExpander"]:has([data-testid="stAlert"]) [data-testid="stAlert"],
+[data-testid="stExpander"]:has([data-testid="stAlert"]) [data-testid="stAlert"] p { color: #7A5B12; }
+
 /* Score gauges */
 .dq-gauge-row { display: flex; gap: 2rem; align-items: center; flex-wrap: wrap; margin: .4rem 0 1rem; }
 .dq-gauge-wrap { display: flex; flex-direction: column; align-items: center; gap: .6rem; }
