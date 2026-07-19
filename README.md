@@ -1,14 +1,30 @@
-# 🧹 Data Quality Auto-Fixer
+<div align="center">
+
+<img src="docs/assets/banner.svg" alt="Data Quality Auto-Fixer — Arabic-first multi-agent data cleaning, measured quality lift 83 to 97" width="100%">
 
 [![tests](https://github.com/RanemA1mutiri/data-quality-auto-fixer/actions/workflows/tests.yml/badge.svg)](https://github.com/RanemA1mutiri/data-quality-auto-fixer/actions)
+[![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![Streamlit](https://img.shields.io/badge/Streamlit-live_app-FF4B4B?logo=streamlit&logoColor=white)](https://data-quality-auto-fixer.streamlit.app/)
+[![LLM](https://img.shields.io/badge/LLM-Gemini-4F46E5)](https://ai.google.dev/)
+[![License](https://img.shields.io/badge/License-MIT-16A34A)](LICENSE)
 
-**An AI multi-agent system that automatically repairs messy datasets using an evaluator–optimizer loop — Arabic-first.**
+**An AI multi-agent system that repairs messy datasets through an evaluator–optimizer loop —<br>the LLM plans, deterministic pandas executes, and a human approves every change.**
 
-### 🔴 Live demo: [data-quality-auto-fixer.streamlit.app](https://data-quality-auto-fixer.streamlit.app/)
+### 🔴 [**Try the live demo →**](https://data-quality-auto-fixer.streamlit.app/)
 
-Try it now — upload [`data/samples/messy_customers_ar.csv`](data/samples/messy_customers_ar.csv) and watch the system profile it, propose an AI cleaning plan, and wait for your approval before touching anything.
+*One click on "Try with sample data" shows the full pipeline: profile → AI plan → your approval → clean file.*
 
-> ✅ **Phases 0–2 shipped** — the full evaluator–optimizer loop is live: watch the quality score climb iteration by iteration. Roadmap below.
+</div>
+
+<!-- screenshots: drop 1-profile.png / 2-plan.png / 3-result.png into docs/screenshots/ and this section goes live
+## In action
+
+| Profile & score | Review the AI plan | Result |
+|---|---|---|
+| ![Profile](docs/screenshots/1-profile.png) | ![Plan review](docs/screenshots/2-plan.png) | ![Result](docs/screenshots/3-result.png) |
+-->
+
+> ✅ **Phases 0–4 shipped** — the full evaluator–optimizer loop is live: watch the quality score climb iteration by iteration. Roadmap below.
 
 ---
 
