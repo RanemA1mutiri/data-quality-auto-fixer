@@ -1,0 +1,56 @@
+<svg width="1200" height="280" viewBox="0 0 1200 280" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Data Quality Auto-Fixer — Arabic-first multi-agent data cleaning, quality score 83 to 97">
+  <rect width="1200" height="280" rx="16" fill="#FBFBFD"/>
+  <rect x="0.5" y="0.5" width="1199" height="279" rx="15.5" fill="none" stroke="#E6E8EB"/>
+
+  <!-- Left: title block -->
+  <g font-family="Segoe UI, Helvetica, Arial, sans-serif">
+    <text x="64" y="96" font-size="42" font-weight="700" fill="#1A1D24">Data Quality Auto-Fixer</text>
+    <text x="64" y="134" font-size="19" fill="#5A6472">Arabic-first multi-agent data cleaning — the LLM plans, deterministic pandas executes.</text>
+
+    <!-- chips -->
+    <g font-size="14" font-weight="500">
+      <rect x="64" y="164" width="150" height="34" rx="8" fill="#EEF2FF" stroke="#C7D2FE"/>
+      <text x="139" y="186" fill="#4F46E5" text-anchor="middle">Evaluator–Optimizer</text>
+
+      <rect x="226" y="164" width="152" height="34" rx="8" fill="#EEF2FF" stroke="#C7D2FE"/>
+      <text x="302" y="186" fill="#4F46E5" text-anchor="middle">Human-in-the-loop</text>
+
+      <rect x="390" y="164" width="118" height="34" rx="8" fill="#EEF2FF" stroke="#C7D2FE"/>
+      <text x="449" y="186" fill="#4F46E5" text-anchor="middle">Arabic-first</text>
+
+      <rect x="520" y="164" width="196" height="34" rx="8" fill="#F1F3F5" stroke="#E6E8EB"/>
+      <text x="618" y="186" fill="#5A6472" text-anchor="middle">LLM never touches the data</text>
+    </g>
+
+    <text x="64" y="236" font-size="14" fill="#98A2B3">Python · pandas · Streamlit · Gemini · pytest + CI</text>
+  </g>
+
+  <!-- Right: before -> after gauges -->
+  <g font-family="Segoe UI, Helvetica, Arial, sans-serif">
+    <!-- Before gauge: r=44, C=276.46, 83% = 229.5 -->
+    <g transform="translate(905 128)">
+      <circle r="44" fill="none" stroke="#EAECF0" stroke-width="12"/>
+      <circle r="44" fill="none" stroke="#CC7309" stroke-width="12" stroke-linecap="round"
+              stroke-dasharray="229.5 276.46" transform="rotate(-90)"/>
+      <text y="9" font-size="26" font-weight="700" fill="#1A1D24" text-anchor="middle">83</text>
+      <text y="76" font-size="15" fill="#5A6472" text-anchor="middle">Before</text>
+    </g>
+
+    <!-- arrow -->
+    <g stroke="#98A2B3" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M975 128 h44"/>
+      <path d="M1010 119 l9 9 -9 9"/>
+    </g>
+
+    <!-- After gauge: 97% = 268.2 -->
+    <g transform="translate(1090 128)">
+      <circle r="44" fill="none" stroke="#EAECF0" stroke-width="12"/>
+      <circle r="44" fill="none" stroke="#0F8A45" stroke-width="12" stroke-linecap="round"
+              stroke-dasharray="268.2 276.46" transform="rotate(-90)"/>
+      <text y="9" font-size="26" font-weight="700" fill="#1A1D24" text-anchor="middle">97</text>
+      <text y="76" font-size="15" fill="#5A6472" text-anchor="middle">After</text>
+    </g>
+
+    <text x="997" y="236" font-size="14" fill="#98A2B3" text-anchor="middle">measured, never generated</text>
+  </g>
+</svg>
