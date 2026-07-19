@@ -115,6 +115,8 @@ html, body, [class*="css"] { font-family: 'Inter', 'IBM Plex Sans Arabic', sans-
 [data-testid="stExpander"]:has([data-testid="stAlert"]) { overflow: hidden; }
 [data-testid="stExpander"]:has([data-testid="stAlert"]) summary { background: #FEF9E7; }
 [data-testid="stExpander"]:has([data-testid="stAlert"]) [data-testid="stAlert"] { background: #FEF9E7; }
+/* Streamlit paints its own tint on an inner layer — clear it so one colour wins */
+[data-testid="stExpander"]:has([data-testid="stAlert"]) [data-testid="stAlert"] * { background: transparent; }
 [data-testid="stExpander"]:has([data-testid="stAlert"]) summary,
 [data-testid="stExpander"]:has([data-testid="stAlert"]) summary *,
 [data-testid="stExpander"]:has([data-testid="stAlert"]) [data-testid="stAlert"],
