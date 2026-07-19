@@ -8,6 +8,7 @@ Core principle: the LLM never touches the data — it proposes a plan from
 a closed op registry; pandas executes; scores are always computed.
 """
 
+import html
 import json
 from io import BytesIO
 from pathlib import Path
@@ -103,6 +104,12 @@ html, body, [class*="css"] { font-family: 'Inter', 'IBM Plex Sans Arabic', sans-
   box-shadow: 0 1px 2px rgba(16,24,40,.08);
 }
 .st-key-apply_btn button:not(:disabled):hover { background: #15663F; }
+
+/* The model's reason for an operation — own line, direction picked from its text */
+.dq-op-reason {
+  color: #5A6472; font-size: .85rem; line-height: 1.6;
+  margin: -.4rem 0 .6rem 1.85rem;
+}
 
 /* Progress bars (dimension bars) */
 [data-testid="stProgress"] > div > div > div { background: #4F46E5; }
@@ -419,11 +426,20 @@ if plan is not None:
     approved = []
     for i, item in enumerate(plan):
         preview = previews[i]
+        # Keep the technical line LTR-only; the model's reason (often Arabic) gets its
+        # own line with dir="auto" so mixed directions never scramble one line.
         label = (
-            f"`{item['op']}` on **{item.get('column') or 'whole table'}** — {item.get('reason', '')} "
+            f"`{item['op']}` on **{item.get('column') or 'whole table'}** "
             f"· **{preview['affected']}** affected"
         )
         checked = st.checkbox(label, value=True, key=f"op_{file_id}_{i}")
+        reason = str(item.get("reason", "")).strip()
+        if reason:
+            # reason is model-generated text — escape it before it touches the DOM
+            st.markdown(
+                f'<div class="dq-op-reason" dir="auto">{html.escape(reason)}</div>',
+                unsafe_allow_html=True,
+            )
         mapping = (item.get("params") or {}).get("mapping")
         if preview["examples"] or preview["note"] or mapping:
             with st.expander("Preview impact", expanded=False):
