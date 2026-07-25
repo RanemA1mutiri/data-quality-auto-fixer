@@ -1,0 +1,55 @@
+name: Keep app awake
+
+# Streamlit Community Cloud puts free apps to sleep after a period with no
+# real visitors. A plain HTTP ping (UptimeRobot and friends) is NOT enough:
+# the app only counts a visit when a browser opens a WebSocket session.
+# So we drive a real headless Chromium against the live URL on a schedule.
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"   # every 30 minutes (GitHub cron is best-effort)
+  workflow_dispatch:          # lets you run it by hand from the Actions tab
+
+jobs:
+  visit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Playwright + Chromium
+        run: |
+          pip install --quiet playwright
+          python -m playwright install --with-deps chromium
+
+      - name: Open the app in a real browser
+        run: |
+          python - <<'PY'
+          from playwright.sync_api import sync_playwright
+
+          URL = "https://data-quality-auto-fixer.streamlit.app"
+          # Text Streamlit shows on the sleep screen; clicking it wakes the app.
+          WAKE = ["Yes, get this app back up!", "get this app back up"]
+
+          with sync_playwright() as p:
+              browser = p.chromium.launch()
+              page = browser.new_page()
+              page.goto(URL, wait_until="domcontentloaded", timeout=90_000)
+
+              for label in WAKE:
+                  try:
+                      page.get_by_text(label).click(timeout=4_000)
+                      print(f"App was asleep - clicked '{label}'")
+                      break
+                  except Exception:
+                      continue
+
+              # Stay long enough for the session to register and the app to boot.
+              page.wait_for_timeout(45_000)
+
+              body = page.inner_text("body")[:200].strip()
+              print("Visited OK. First text on page:", body or "(still rendering)")
+              browser.close()
+          PY
