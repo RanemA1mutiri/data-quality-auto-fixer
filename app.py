@@ -167,10 +167,58 @@ html, body, [class*="css"] { font-family: 'Inter', 'IBM Plex Sans Arabic', sans-
 .dq-gauge-card .dq-gauge { width: 82px; height: 82px; }
 .dq-gauge-card .dq-gauge-inner { width: 64px; height: 64px; }
 .dq-gauge-card .dq-gauge-num { font-size: 1.35rem; }
-/* Profile row: all three cards share the SAME markup/class, so they are always identical */
-.dq-metric-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; margin: .4rem 0 1rem; }
+/* Profile row: all three cards share the SAME markup/class, so they are always identical.
+   auto-fit keeps three across on desktop and folds to one on a phone with no breakpoint. */
+.dq-metric-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin: .4rem 0 1rem; }
 .dq-card-value { flex: 1; display: flex; align-items: center; justify-content: center; font-size: 2rem; font-weight: 600; color: #1A1D24; }
 [data-testid="stMetric"] { min-height: 150px; display: flex; flex-direction: column; justify-content: center; }
+
+/* ---------- Phones ----------
+   Streamlit does not reflow st.columns or our fixed card sizes on a narrow
+   screen, so the layout has to be told what to do below 640px. */
+@media (max-width: 640px) {
+  [data-testid="stMainBlockContainer"], .block-container { padding: 1.25rem 1rem 0; }
+
+  /* Hero: headline and chips scaled to a phone */
+  .dq-hero { padding: .25rem 0 1rem; }
+  .dq-hero h1 { font-size: 1.32rem; gap: .4rem; }
+  .dq-hero h1 svg { width: 21px; height: 21px; }
+  .dq-tagline { font-size: .95rem; margin-bottom: .9rem; }
+  .dq-chip { font-size: .74rem; padding: .28rem .6rem; }
+  .dq-chips { gap: .4rem; }
+  .dq-steps { font-size: .84rem; margin-top: .9rem; row-gap: .3rem; }
+
+  /* Any st.columns row (upload/sample, score pair, the four downloads) stacks.
+     Streamlit renamed the column test id ("column" -> "stColumn") across the
+     versions this app allows, so both are targeted. */
+  [data-testid="stHorizontalBlock"] { flex-direction: column; gap: .6rem; }
+  [data-testid="stHorizontalBlock"] > [data-testid="stColumn"],
+  [data-testid="stHorizontalBlock"] > [data-testid="column"] {
+    width: 100% !important; flex: 1 1 100% !important; min-width: 0 !important;
+  }
+  /* Full-width tap targets once stacked — thumb-friendly and deliberate-looking */
+  .stButton > button, [data-testid="stDownloadButton"] > button { width: 100%; }
+
+  /* Profile cards: same card, smaller gauge, so all three stay identical */
+  .dq-metric-row { gap: .75rem; }
+  .dq-gauge-card { height: 120px; padding: .85rem 1rem; }
+  .dq-gauge-card .dq-gauge { width: 70px; height: 70px; }
+  .dq-gauge-card .dq-gauge-inner { width: 54px; height: 54px; }
+  .dq-gauge-card .dq-gauge-num { font-size: 1.15rem; }
+  .dq-gauge-card .dq-gauge-sub { font-size: .68rem; }
+  .dq-card-value { font-size: 1.6rem; }
+
+  /* Before → After: stack the two gauges and turn the arrow to point down */
+  .dq-result-card { flex-direction: column; gap: 1rem; padding: 1.25rem 1rem; }
+  .dq-arrow { transform: rotate(90deg); }
+  .dq-gauge-row { gap: 1.25rem; justify-content: center; }
+
+  /* Long tab labels scroll instead of squashing */
+  [data-testid="stTabs"] [data-baseweb="tab-list"] { overflow-x: auto; }
+  [data-testid="stTabs"] [data-baseweb="tab"] { white-space: nowrap; }
+
+  .dq-op-reason { margin-left: 0; margin-right: 0; }
+}
 </style>
 """
 
