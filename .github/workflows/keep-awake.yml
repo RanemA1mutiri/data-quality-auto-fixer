@@ -27,13 +27,21 @@ jobs:
       - name: Open the app in a real browser
         run: |
           python - <<'PY'
-          import re, sys
+          import re, sys, time
           from playwright.sync_api import sync_playwright
 
           URL = "https://data-quality-auto-fixer.streamlit.app"
-          # A heading that only exists once the Streamlit app itself has rendered.
-          READY = "text=Data Quality Auto-Fixer"
+          HEADING = "Data Quality Auto-Fixer"   # only present once the app renders
           WAKE = re.compile("get this app back up", re.I)
+
+          def app_frame(page):
+              """Streamlit Cloud serves the app from a nested frame, not the top
+              document, so anything checking the top frame always sees an empty
+              page and reports a false failure."""
+              for f in page.frames:
+                  if "/~/+/" in f.url:
+                      return f
+              return None
 
           with sync_playwright() as p:
               browser = p.chromium.launch()
@@ -47,18 +55,27 @@ jobs:
               except Exception:
                   print("No wake button (app was already up, or still booting)")
 
-              # Waking from cold can take a couple of minutes, so wait for the
-              # app's own content rather than a fixed sleep.
-              try:
-                  page.wait_for_selector(READY, timeout=180_000)
-                  print("App rendered - the session is live")
-              except Exception:
-                  print("App did NOT render within 3 minutes")
-                  print("page title:", page.title())
-                  print("body head:", page.inner_text("body")[:300].strip() or "(empty)")
+              # Waking from cold can take minutes, so poll for the app's own
+              # heading inside its frame instead of sleeping a fixed amount.
+              deadline, ready = time.time() + 240, False
+              while time.time() < deadline:
+                  frame = app_frame(page)
+                  if frame:
+                      try:
+                          frame.wait_for_selector(f"text={HEADING}", timeout=5_000)
+                          ready = True
+                          break
+                      except Exception:
+                          pass
+                  page.wait_for_timeout(2_000)
+
+              if not ready:
+                  print("App did NOT render within 4 minutes")
+                  print("frames seen:", [f.url for f in page.frames])
                   browser.close()
                   sys.exit(1)
 
+              print("App rendered - the session is live")
               # Hold the session open briefly so it is unambiguously a real visit.
               page.wait_for_timeout(15_000)
               browser.close()
