@@ -53,7 +53,7 @@ The output is a number — **measured, never generated**. On the demo dataset th
 
 ## Architecture — Evaluator–Optimizer Pattern
 
-**Core principle: the LLM never touches the data.** It proposes a plan (JSON from a closed operation registry) and explains decisions. Deterministic pandas code is the only thing that transforms rows and computes scores — making every run reproducible and hallucination-free.
+**Core principle: the LLM never edits the data.** It proposes a plan (JSON from a closed operation registry) and explains decisions; it sees computed statistics plus a 5-row sample whose identifying columns are shape-masked first. Deterministic pandas code is the only thing that transforms rows and computes scores — making every run reproducible and hallucination-free.
 
 ```mermaid
 flowchart TD
@@ -86,18 +86,18 @@ Column kinds (phone / date / numeric / text) are detected deterministically from
 ### Governance
 
 - **Human-in-the-loop:** nothing is written without explicit approval; destructive ops approved individually
-- **No data loss:** original file is immutable; all work happens on copies; every op is reversible
-- **Append-only audit log:** every transformation recorded (op, params, rows affected, before/after) — the full recipe is replayable
-- **Privacy by design:** the LLM sees only aggregate profiles and a 5-row sample, never the full dataset
+- **No data loss:** the uploaded file is never modified — all work happens on copies, so the original is always the way back
+- **Exportable audit log:** every applied transformation recorded (op, column, params, rows affected, real before→after samples, and the model's reason) — the full recipe is replayable on the original file
+- **Privacy by design:** the LLM sees computed profiles and a 5-row sample, never the full dataset — and columns that look like names, phones, emails, national IDs or IBANs (by name *or* by content) are shape-masked before they leave
 
 ## Arabic-First 🇸🇦
 
 Most data-quality tools break on Arabic. This system is built for it:
 
-- Alef variants normalization (ا / أ / إ / آ)
+- Alef variants normalization (ا / أ / إ / آ) and Persian/Urdu letter forms (ی → ي, ک → ك) — ة/ه and ى/ي are deliberately left alone, since they distinguish real words
 - Hindi ↔ Arabic numeral unification (٠١٢٣ ↔ 0123)
 - Mixed Arabic/English text handling
-- City-name variant resolution (الرياض / الریاض / Riyadh)
+- City-name variant resolution: encoding variants (الریاض → الرياض) deterministically; transliterations (Riyadh → الرياض) via an explicit, human-approved mapping
 - Auto-generated **Arabic executive quality report**
 
 ## Tech Stack
@@ -119,7 +119,8 @@ Most data-quality tools break on Arabic. This system is built for it:
 - [x] **Phase 2b** — Full evaluator–optimizer loop, live: Planner proposes → Executor applies (on copies) → Judge measures and emits a targeted weakness vector → Optimizer improves the plan → repeat. Stops on threshold / diminishing returns / stagnation / iteration cap, always keeping the best-so-far plan. Live iteration log in the UI
 - [x] **Phase 3** — Informed approval: per-op dry-run preview (affected count + real before→after examples on every checkbox) and changed-cell highlighting in the after view
 - [x] **Phase 4** — Arabic executive report (self-contained RTL HTML, print-to-PDF, every number computed & every sentence a code template — zero LLM) + full export row: clean CSV, clean Excel, report, audit log JSON
-- [ ] **Phase 5** — Polish: demo video/GIF, Saudi open-data demo, CI badge
+- [x] **CI** — GitHub Actions test badge live; a scheduled real-browser visit keeps the demo awake
+- [ ] **Phase 5** — Polish: demo video/GIF, Saudi open-data demo
 
 ## Run Locally
 

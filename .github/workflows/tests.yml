@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [main]
 
+# Reading the code is all the test job needs.
+permissions:
+  contents: read
+
 jobs:
   test:
     runs-on: ubuntu-latest

@@ -19,8 +19,46 @@ from .ops import REGISTRY
 # Columns whose values are personally identifying — masked before any value
 # leaves the machine for the LLM. The LLM only needs the *shape* of a value
 # (which digits/letters vary), never the real name or phone number.
-_PII_HINTS = ("name", "اسم", "mobile", "phone", "جوال", "هاتف", "email", "بريد",
-              "id", "هوية", "iban", "حساب", "address", "عنوان")
+_PII_HINTS = (
+    # identity
+    "name", "اسم", "الاسم", "customer", "client", "user", "person", "employee",
+    "member", "owner", "عميل", "العميل", "زبون", "مشترك", "موظف", "شخص", "مالك",
+    # contact
+    "mobile", "phone", "tel", "contact", "جوال", "هاتف", "نقال", "تليفون", "تواصل",
+    "email", "mail", "بريد", "ايميل",
+    # identifiers / location
+    "id", "هوية", "iqama", "اقامة", "إقامة", "passport", "جواز",
+    "iban", "account", "حساب", "card", "بطاقة",
+    "address", "عنوان", "street", "شارع", "حي",
+)
+
+# Content that identifies a person no matter what the column is called.
+_LOOKS_LIKE_PII = (
+    re.compile(r"[^@\s]+@[^@\s]+\.[A-Za-z]{2,}"),          # email
+    re.compile(r"(?<!\d)(?:\+?966|00966|0)?5\d{8}(?!\d)"),  # Saudi mobile
+    re.compile(r"(?<!\d)[12]\d{9}(?!\d)"),                  # national ID / iqama
+    re.compile(r"\bSA\d{22}\b", re.IGNORECASE),             # IBAN
+)
+
+
+def _shape_mask(value) -> str:
+    """Keep only the SHAPE of a value: digits→#, letters→x."""
+    return re.sub(r"[A-Za-zء-ي]", "x", re.sub(r"\d", "#", str(value)))
+
+
+def _is_pii_column(name, series: pd.Series) -> bool:
+    """A column is PII if its NAME hints at it, or if its VALUES look like
+    contact details / identifiers — name hints alone missed columns such as
+    'Client' or 'العميل' and leaked real names and phone numbers."""
+    if any(h in str(name).lower() for h in _PII_HINTS):
+        return True
+    values = series.dropna().astype("string").head(20)
+    if not len(values):
+        return False
+    for pattern in _LOOKS_LIKE_PII:
+        if values.str.contains(pattern, regex=True, na=False).mean() >= 0.3:
+            return True
+    return False
 
 
 def _mask_sample(df: pd.DataFrame, n: int) -> str:
@@ -28,11 +66,8 @@ def _mask_sample(df: pd.DataFrame, n: int) -> str:
     (digits→#, Arabic/Latin letters→x) so no real identifier is sent."""
     sample = df.head(n).copy()
     for col in sample.columns:
-        if any(h in str(col).lower() for h in _PII_HINTS):
-            sample[col] = sample[col].map(
-                lambda v: v if pd.isna(v) else re.sub(r"[A-Za-zء-ي]", "x",
-                                                      re.sub(r"\d", "#", str(v)))
-            )
+        if _is_pii_column(col, df[col]):
+            sample[col] = sample[col].map(lambda v: v if pd.isna(v) else _shape_mask(v))
     return sample.to_json(orient="records", force_ascii=False)
 
 PROMPT_TEMPLATE = """You are the Rule Planner agent in a Data Quality Auto-Fixer system.

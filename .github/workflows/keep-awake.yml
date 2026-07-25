@@ -10,6 +10,9 @@ on:
     - cron: "*/30 * * * *"   # every 30 minutes (GitHub cron is best-effort)
   workflow_dispatch:          # lets you run it by hand from the Actions tab
 
+# This job only opens a public URL — it needs no access to the repo at all.
+permissions: {}
+
 jobs:
   visit:
     runs-on: ubuntu-latest

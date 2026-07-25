@@ -8,6 +8,7 @@ Core principle: the LLM never touches the data — it proposes a plan from
 a closed op registry; pandas executes; scores are always computed.
 """
 
+import hashlib
 import html
 import json
 from io import BytesIO
@@ -78,7 +79,7 @@ html, body, [class*="css"] { font-family: 'Inter', 'IBM Plex Sans Arabic', sans-
 .dq-steps { display: flex; align-items: center; gap: .35rem; flex-wrap: wrap;
   color: #5A6472; font-size: .92rem; margin-top: 1.1rem; }
 .dq-steps svg { color: #4F46E5; }
-.dq-steps .sep { color: #98A2B3; margin: 0 .2rem; }
+.dq-steps .sep { color: #667085; margin: 0 .2rem; }
 
 /* Metric cards */
 [data-testid="stMetric"] {
@@ -141,9 +142,9 @@ html, body, [class*="css"] { font-family: 'Inter', 'IBM Plex Sans Arabic', sans-
   display: flex; flex-direction: column; align-items: center; justify-content: center;
 }
 .dq-gauge-num { font-size: 1.55rem; font-weight: 700; line-height: 1.05; color: #1A1D24; }
-.dq-gauge-sub { color: #98A2B3; font-size: .75rem; }
+.dq-gauge-sub { color: #667085; font-size: .75rem; }
 .dq-gauge-label { color: #5A6472; font-size: .9rem; font-weight: 500; }
-.dq-arrow { color: #98A2B3; display: flex; align-items: center; }
+.dq-arrow { color: #667085; display: flex; align-items: center; }
 
 /* Before → After comparison, wrapped in a card so it matches the card system
    instead of floating naked, and centered with breathing room. */
@@ -230,7 +231,7 @@ HERO_HTML = f"""
     <span class="dq-chip">{icon("languages", 15)}Arabic-first</span>
     <span class="dq-chip">{icon("bot", 15)}Multi-agent · Evaluator–Optimizer</span>
     <span class="dq-chip">{icon("user-check", 15)}Human-in-the-loop</span>
-    <span class="dq-chip">{icon("lock", 15)}The LLM never touches your data</span>
+    <span class="dq-chip">{icon("lock", 15)}The LLM never edits your data — and sees only a masked sample</span>
   </div>
   <div class="dq-steps">
     {icon("upload", 16)}Upload <span class="sep">→</span>
@@ -299,9 +300,9 @@ def _dedupe_columns(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def load_dataframe(uploaded) -> pd.DataFrame | None:
+def load_dataframe(uploaded, sheet: str | None = None) -> pd.DataFrame | None:
     """Read CSV/Excel defensively: encodings, empty files, bad extensions,
-    duplicate column names."""
+    duplicate column names, multi-sheet workbooks."""
     name = uploaded.name.lower()
     df = None
     try:
@@ -318,7 +319,7 @@ def load_dataframe(uploaded) -> pd.DataFrame | None:
                 return None
         else:
             uploaded.seek(0)
-            df = pd.read_excel(uploaded)
+            df = pd.read_excel(uploaded, sheet_name=sheet or 0)
     except pd.errors.EmptyDataError:
         st.error("الملف فارغ — ما فيه بيانات تُقرأ.")
         return None
@@ -344,11 +345,31 @@ with col_sample:
     if st.button(":material/science: Try with sample data (messy Arabic customers)", type="primary"):
         st.session_state["use_sample"] = True
 
+def _sheet_choice(uploaded) -> str | None:
+    """Excel files can hold several sheets; reading only the first one silently
+    hid the rest. Ask which sheet when there is more than one."""
+    if uploaded.name.lower().endswith(".csv"):
+        return None
+    try:
+        uploaded.seek(0)
+        sheets = pd.ExcelFile(uploaded).sheet_names
+    except Exception:
+        return None
+    if len(sheets) <= 1:
+        return sheets[0] if sheets else None
+    return st.selectbox(f"This workbook has {len(sheets)} sheets — pick one:", sheets, index=0)
+
+
 if uploaded is not None:
     st.session_state["use_sample"] = False
-    df = load_dataframe(uploaded)
-    file_id = f"{uploaded.name}:{uploaded.size}"
-    source_name = uploaded.name
+    sheet = _sheet_choice(uploaded)
+    df = load_dataframe(uploaded, sheet)
+    # Identify the file by its CONTENT: name+size collide whenever an edit keeps
+    # the byte count (0501234567 → 0501234568), which served a stale profile.
+    uploaded.seek(0)
+    digest = hashlib.blake2b(uploaded.getvalue(), digest_size=16).hexdigest()
+    file_id = f"{digest}:{sheet or ''}"
+    source_name = uploaded.name + (f" · {sheet}" if sheet else "")
 elif st.session_state.get("use_sample"):
     df = pd.read_csv(SAMPLE_PATH)
     file_id = "sample"
@@ -361,6 +382,16 @@ if df is None or df.empty:
     if df is not None:
         st.error("الملف ما فيه صفوف بيانات.")
     st.stop()
+
+# The optimizer loop copies the frame once per iteration, and the free tier has
+# ~1GB of RAM — say so before a huge file turns into a crash mid-run.
+ROW_GUARD = 50_000
+if len(df) > ROW_GUARD:
+    st.warning(
+        f"This file has {len(df):,} rows. The demo runs on shared free hosting, "
+        f"so profiling and the optimizer loop may be slow or run out of memory above "
+        f"~{ROW_GUARD:,} rows. For a quick look, try a smaller extract."
+    )
 
 # Reset stale state when the file changes (a plan for file A must never touch file B)
 if st.session_state.get("file_id") != file_id:
@@ -417,7 +448,11 @@ if profile["issues"]:
 # --- Plan (LLM proposes; deterministic pandas executes) --------------------
 
 st.subheader("2 · Cleaning plan (AI-proposed, you approve)")
-st.caption("Privacy: the AI sees only aggregate statistics and 5 sample rows — never your full dataset.")
+st.caption(
+    "Privacy: the AI sees computed statistics and 5 sample rows — never your full dataset. "
+    "Columns that look like names, phones, emails, IDs or IBANs are shape-masked first "
+    "(digits → #, letters → x), so it reads the pattern, not the person."
+)
 
 threshold = st.slider(
     "Target quality score (for the auto-optimize loop)", 85, 100, 95,

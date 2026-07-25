@@ -53,7 +53,7 @@ def _call_once(model: str, body: dict, api_key: str) -> str:
         headers={"Content-Type": "application/json", "x-goog-api-key": api_key},
         method="POST",
     )
-    with urllib.request.urlopen(req, timeout=60) as resp:
+    with urllib.request.urlopen(req, timeout=30) as resp:
         data = json.loads(resp.read().decode("utf-8"))
     candidates = data.get("candidates") or []
     if not candidates or "content" not in candidates[0]:

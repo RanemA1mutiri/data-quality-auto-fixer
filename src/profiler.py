@@ -34,10 +34,18 @@ def profile_dataframe(df: pd.DataFrame) -> dict:
 
         is_texty = pd.api.types.is_string_dtype(series) or series.dtype == object
         as_str = series.dropna().astype("string") if is_texty else None
+        mixed_types = 0
         if as_str is not None and len(as_str):
             hidden_nulls = int(as_str.str.strip().isin(NULL_TOKENS).sum())
             mixed_numerals = int(as_str.str.contains(HINDI_DIGITS_PATTERN, regex=True).sum())
             alef_variants = int(as_str.str.contains(ALEF_VARIANTS_PATTERN, regex=True).sum())
+            # An object column holding both real numbers/bools and text is a
+            # quality problem the scorer treats as plain text — surface it here
+            # so it is visible instead of silently passing.
+            raw = series.dropna()
+            non_text = int(raw.map(lambda v: not isinstance(v, str)).sum())
+            if non_text and non_text < len(raw):
+                mixed_types = non_text
 
         columns.append(
             {
@@ -49,6 +57,7 @@ def profile_dataframe(df: pd.DataFrame) -> dict:
                 "unique_values": int(series.nunique(dropna=True)),
                 "hindi_numerals": mixed_numerals,
                 "alef_variants": alef_variants,
+                "mixed_types": mixed_types,
             }
         )
 
@@ -60,5 +69,7 @@ def profile_dataframe(df: pd.DataFrame) -> dict:
             issues.append(f"🔢 Column '{col}': {mixed_numerals} values contain Hindi numerals (٠-٩) — mixed with Arabic numerals (0-9)")
         if alef_variants:
             issues.append(f"✍️ Column '{col}': {alef_variants} values contain alef variants (أ/إ/آ) — may cause false mismatches")
+        if mixed_types:
+            issues.append(f"🧪 Column '{col}': {mixed_types} non-text values mixed into a text column — types are inconsistent")
 
     return {"rows": total_rows, "duplicate_rows": duplicate_rows, "columns": columns, "issues": issues}

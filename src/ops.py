@@ -21,6 +21,12 @@ HINDI_TO_ARABIC = str.maketrans("٠١٢٣٤٥٦٧٨٩۰۱۲۳۴۵۶۷۸۹", "012
 ALEF_RE = re.compile(r"[أإآٱ]")
 DIACRITICS_RE = re.compile(r"[ً-ٰٟ]")
 TATWEEL = "ـ"
+
+# Persian/Urdu code points that are the SAME Arabic letter in a different
+# encoding — unifying them is purely an encoding fix, so it is safe here.
+# Deliberately NOT unified: ة/ه and ى/ي, which distinguish real words
+# (مكتبة vs مكتبه, على vs علي) — changing those would alter meaning.
+FOREIGN_FORMS = str.maketrans({"ی": "ي", "ک": "ك", "ھ": "ه", "ﻻ": "لا"})
 NULL_TOKENS = {"", "-", "—", "N/A", "NA", "n/a", "null", "NULL", "None", "غير معروف", "لا يوجد", "غير متوفر"}
 
 
@@ -47,7 +53,8 @@ def trim_whitespace(df: pd.DataFrame, column: str) -> tuple[pd.DataFrame, int]:
 
 
 def normalize_arabic_text(df: pd.DataFrame, column: str) -> tuple[pd.DataFrame, int]:
-    """Unify alef variants, strip diacritics and tatweel. Meaning-preserving only."""
+    """Unify alef variants and Persian/Urdu letter forms, strip diacritics and
+    tatweel. Meaning-preserving only — ة/ه and ى/ي are left alone on purpose."""
     if not _is_texty(df[column]):
         return df, 0
     s = _as_str(df[column])
@@ -55,6 +62,7 @@ def normalize_arabic_text(df: pd.DataFrame, column: str) -> tuple[pd.DataFrame, 
         s.str.replace(ALEF_RE, "ا", regex=True)
         .str.replace(DIACRITICS_RE, "", regex=True)
         .str.replace(TATWEEL, "")
+        .str.translate(FOREIGN_FORMS)
     )
     affected = int((s != new).fillna(False).sum())
     df = df.copy()
@@ -154,6 +162,68 @@ def parse_dates(df: pd.DataFrame, column: str, dayfirst: bool = True) -> tuple[p
     return df, affected
 
 
+# Characters that mean "minus" but are not the ASCII hyphen. Stripping them
+# blindly (as an [^\d.-] filter does) silently turns −5 into 5.
+_MINUS_FORMS = "−‒–—‑­"
+_ARABIC_DECIMAL = "٫"    # ٫  decimal separator
+_ARABIC_THOUSANDS = "٬"  # ٬  thousands separator
+# Currency tokens are removed by name because some of them contain a dot
+# ("ر.س"): letting the generic filter keep that dot turns 250 into 0.25.
+_CURRENCY_RE = re.compile(r"ر\s*\.?\s*س\s*\.?|﷼|ريال|SAR|SR\b|USD|EUR|[$€£¥]", re.IGNORECASE)
+
+
+def _to_number(raw) -> float | None:
+    """Parse one value into a number, or None when the intent is not certain.
+
+    Handles: Hindi/Persian digits · unicode minus forms · Arabic decimal and
+    thousands separators · accounting negatives "(1,200)" · currency symbols.
+    Refuses (returns None) when the meaning would have to be guessed:
+    percentages, trailing minus, several decimal points.
+    """
+    if raw is None or (isinstance(raw, float) and pd.isna(raw)):
+        return None
+    text = str(raw).strip()
+    if not text:
+        return None
+
+    text = text.translate(HINDI_TO_ARABIC)
+    for ch in _MINUS_FORMS:
+        text = text.replace(ch, "-")
+    text = text.replace(_ARABIC_THOUSANDS, ",").replace(_ARABIC_DECIMAL, ".")
+
+    if "%" in text:
+        return None  # 50% could mean 50 or 0.5 — never guess
+
+    negative = False
+    if text.startswith("(") and text.endswith(")"):  # accounting negative
+        negative, text = True, text[1:-1].strip()
+
+    text = _CURRENCY_RE.sub("", text)
+    text = re.sub(r"[^\d.,\-]", "", text)  # drop remaining symbols, spaces, letters
+    if not text:
+        return None
+    if text.startswith("-"):
+        negative, text = not negative, text[1:]
+    if "-" in text:
+        return None  # trailing/embedded minus — ambiguous
+
+    # Decide which separator is the decimal point: the LAST one wins, so both
+    # 1,200.50 and 1.200,50 land on 1200.50. A lone comma before exactly three
+    # digits is a thousands separator (1,234 → 1234).
+    if "." in text and "," in text:
+        dec = "." if text.rfind(".") > text.rfind(",") else ","
+        text = text.replace("," if dec == "." else ".", "").replace(dec, ".")
+    elif "," in text:
+        text = text.replace(",", "") if re.fullmatch(r"\d{1,3}(,\d{3})+", text) else text.replace(",", ".")
+
+    # A decimal point must sit between digits. Anything else (".250" left over
+    # from an unrecognised prefix, "1.2.3") is refused rather than guessed.
+    if not re.fullmatch(r"\d+(\.\d+)?", text):
+        return None
+    value = float(text)
+    return -value if negative else value
+
+
 def to_numeric(df: pd.DataFrame, column: str) -> tuple[pd.DataFrame, int]:
     """Convert numeric-looking strings (incl. Hindi digits, currency symbols) to numbers.
     Values that don't parse are left as-is; the result column is object (mixed) by design."""
@@ -161,10 +231,8 @@ def to_numeric(df: pd.DataFrame, column: str) -> tuple[pd.DataFrame, int]:
         return df, 0
     if not _is_texty(df[column]):
         return df, 0
-    s = _as_str(df[column]).str.translate(HINDI_TO_ARABIC)
-    cleaned = s.str.replace(r"[^\d.\-]", "", regex=True)
-    cleaned = cleaned.where(cleaned.str.fullmatch(_NUMERIC_ONLY.pattern).fillna(False))
-    nums = pd.to_numeric(cleaned, errors="coerce")
+    s = _as_str(df[column])
+    nums = pd.Series([_to_number(v) for v in s], index=s.index, dtype="float64")
 
     mask = nums.notna()
     affected = int(mask.sum())
@@ -227,16 +295,41 @@ def _kwargs_for(item: dict, spec: dict) -> dict:
     return kwargs
 
 
+def _changed_examples(before: pd.DataFrame, after: pd.DataFrame, column: str,
+                      max_examples: int = 3) -> list[dict]:
+    """Real before→after pairs for the cells an op actually changed."""
+    b_str = before[column].astype("string").fillna("␀")
+    a_str = after[column].astype("string").fillna("␀")
+    changed = b_str != a_str
+    examples = []
+    for idx in list(changed[changed].index[:max_examples]):
+        b_val, a_val = before[column][idx], after[column][idx]
+        examples.append({
+            "before": "∅" if pd.isna(b_val) else str(b_val),
+            "after": "∅ (empty)" if pd.isna(a_val) else str(a_val),
+        })
+    return examples
+
+
 def apply_plan(df: pd.DataFrame, plan: list[dict]) -> tuple[pd.DataFrame, list[dict]]:
-    """Apply approved plan items in order. Returns (clean_df, change_log)."""
+    """Apply approved plan items in order. Returns (clean_df, change_log).
+
+    The log carries the params each op ran with and real before→after samples,
+    so the exported audit trail is enough to explain — and replay — every change.
+    """
     log = []
     for item in plan:
         spec = REGISTRY[item["op"]]
-        df, affected = spec["fn"](df, **_kwargs_for(item, spec))
+        params = _kwargs_for(item, spec)
+        before = df
+        df, affected = spec["fn"](df, **params)
+        column = item.get("column") if spec["needs_column"] else None
         log.append({
             "op": item["op"],
-            "column": item.get("column") or "—",
+            "column": column or "—",
+            "params": {k: v for k, v in params.items() if k != "column"},
             "affected": affected,
+            "examples": _changed_examples(before, df, column) if column and affected else [],
             "reason": item.get("reason", ""),
         })
     return df, log

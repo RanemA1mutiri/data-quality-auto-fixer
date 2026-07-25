@@ -7,6 +7,7 @@ import pandas as pd
 
 from src.ops import (
     apply_plan,
+    normalize_arabic_text,
     normalize_phone_sa,
     parse_dates,
     standardize_nulls,
@@ -249,3 +250,74 @@ def test_to_numeric_all_convert_yields_float_dtype():
     out, affected = to_numeric(df, "n")
     assert affected == 3
     assert pd.api.types.is_numeric_dtype(out["n"])
+
+
+# --- Fixes from the full audit (25 Jul 2026) — one test per confirmed defect ---
+
+def test_to_numeric_never_flips_the_sign():
+    """(1,200) and −5 used to come back POSITIVE: the filter dropped every
+    non-ASCII minus and the accounting parentheses."""
+    df = pd.DataFrame({"a": ["(1,200)", "−5", "‑7", "  -3  "]})
+    out, _ = to_numeric(df, "a")
+    assert list(out["a"]) == [-1200.0, -5.0, -7.0, -3.0]
+
+
+def test_to_numeric_keeps_magnitude_across_separator_styles():
+    """٣٫٥ became 35 (×10) and 1.200,50 became 1.2005 — both silent corruption."""
+    df = pd.DataFrame({"a": ["٣٫٥", "1.200,50", "1,200.50", "1,234", "1.234"]})
+    out, _ = to_numeric(df, "a")
+    assert list(out["a"]) == [3.5, 1200.5, 1200.5, 1234.0, 1.234]
+
+
+def test_to_numeric_reads_currency_without_eating_the_value():
+    """'ر.س' carries a dot; keeping it turned 250 into 0.25."""
+    df = pd.DataFrame({"a": ["ر.س 250", "٣٢٠ ر.س", "890 ريال", "$1,000.25", "SAR 99.9"]})
+    out, _ = to_numeric(df, "a")
+    assert list(out["a"]) == [250.0, 320.0, 890.0, 1000.25, 99.9]
+
+
+def test_to_numeric_refuses_to_guess():
+    """Ambiguous input must be left untouched rather than silently reinterpreted."""
+    df = pd.DataFrame({"a": ["50%", "12-", "1.2.3", ".5", "٬٢٥٠", ""]})
+    out, _ = to_numeric(df, "a")
+    assert list(out["a"]) == ["50%", "12-", "1.2.3", ".5", "٬٢٥٠", ""]
+
+
+def test_arabic_normalisation_unifies_encoding_variants_only():
+    """Persian yeh/keheh are the same letter re-encoded, so they unify.
+    ة/ه and ى/ي distinguish real words and must NOT be touched."""
+    df = pd.DataFrame({"t": ["الریاض", "الرياض", "کتاب", "كتاب", "مكتبة", "مكتبه", "على", "علي"]})
+    out, _ = normalize_arabic_text(df, "t")
+    v = list(out["t"])
+    assert v[0] == v[1] and v[2] == v[3]      # encoding variants unified
+    assert v[4] != v[5] and v[6] != v[7]      # meaning-bearing letters preserved
+
+
+def test_audit_log_carries_params_and_examples():
+    """The README promises params + before/after in the log; it used to hold
+    neither, so the exported trail could not explain a change."""
+    df = pd.DataFrame({"c": ["  a  ", "b"]})
+    _, log = apply_plan(df, [{"op": "trim_whitespace", "column": "c", "reason": "r"}])
+    entry = log[0]
+    assert {"op", "column", "params", "affected", "examples", "reason"} <= set(entry)
+    assert entry["examples"] and entry["examples"][0] == {"before": "  a  ", "after": "a"}
+
+
+def test_sample_headline_score_still_holds():
+    """83 → 97 is published on the CV, README and LinkedIn. Pin it so no
+    future change can quietly move the number the owner is quoted on."""
+    df = pd.read_csv("data/samples/messy_customers_ar.csv")
+    before, _ = quality_score(df)
+    plan = [{"op": "standardize_nulls", "column": c} for c in df.columns]
+    plan += [{"op": "unify_numerals", "column": c} for c in ["mobile", "amount_sar", "order_date"]]
+    plan += [{"op": "trim_whitespace", "column": c} for c in ["name", "city", "status"]]
+    plan += [{"op": "normalize_arabic_text", "column": c} for c in ["name", "city", "status"]]
+    plan += [{"op": "normalize_phone_sa", "column": "mobile"},
+             {"op": "parse_dates", "column": "order_date"},
+             {"op": "to_numeric", "column": "amount_sar"},
+             {"op": "drop_exact_duplicates", "column": None}]
+    clean, _ = apply_plan(df, plan)
+    after, dims = quality_score(clean)
+    assert round(before) == 83, f"published 'before' moved: {before:.1f}"
+    assert after >= 97, f"published 'after' (97) regressed: {after:.1f}"
+    assert dims["validity"] >= 0.97, f"published validity (97%) regressed: {dims['validity']:.0%}"
