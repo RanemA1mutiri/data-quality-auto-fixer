@@ -1,9 +1,9 @@
 """Quality Judge — deterministic scoring engine.
 
 Computes the composite data-quality score over standard dimensions
-(DAMA-style). Every number is computed with pandas; the LLM only
-narrates weaknesses. Non-applicable dimensions are dropped and weights
-renormalized.
+(DAMA-style). Every number — and the weakness vector the optimizer
+consumes — is computed with pandas; no LLM is involved in this module.
+Non-applicable dimensions are dropped and weights renormalized.
 
 Dimensions live in Phase 2:
 - completeness: share of non-empty cells

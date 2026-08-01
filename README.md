@@ -38,7 +38,7 @@ Existing tools either **detect** problems (Great Expectations) or hand you **man
 
 Upload a messy CSV → the system profiles it, proposes cleaning transformations, **scores the result numerically**, and iterates until quality passes a threshold — with **human approval required before any change is applied**.
 
-The output is a number — **measured, never generated**. On the demo dataset the system raises the overall quality score from **83 → 97**, with the validity dimension jumping from **59% → 97%** (phones normalized to +966 E.164, mixed dates to ISO, amounts to real numbers). Plus: a clean file and a full audit log of every change. *(Reproduce it: `pytest` — `test_end_to_end_sample_file` asserts the score rises.)*
+The output is a number — **measured, never generated**. On the demo dataset the system raises the overall quality score from **83 → 97**, with the validity dimension jumping from **59% → 97%** (phones normalized to +966 E.164, mixed dates to ISO, amounts to real numbers). Plus: a clean file and a full audit log of every change. *(Reproduce it: `pytest` — `test_sample_headline_score_still_holds` asserts these exact numbers.)*
 
 ## What it fixes — real output from the demo dataset
 
@@ -61,7 +61,7 @@ flowchart TD
     B --> D["2 · Rule Planner<br/>(LLM: cleaning plan as JSON)"]
     D --> V["Plan Validator<br/>(code: whitelist + schema)"]
     V --> E["3 · Executor<br/>(pandas on a copy + change-log)"]
-    E --> F["4 · Quality Judge<br/>(code computes the quality score,<br/>LLM narrates weaknesses)"]
+    E --> F["4 · Quality Judge<br/>(code — computes the score and<br/>the weakness vector, no LLM)"]
     F -->|score < threshold| G["5 · Optimizer<br/>(LLM: targeted plan improvements)"]
     G --> D
     F -->|score ≥ threshold| H["🧍 Human Approval Gate"]
@@ -78,8 +78,10 @@ Standard data-quality dimensions, each measured in code and normalized to [0, 1]
 | Validity | share of values matching the column's detected target format (phone → +9665XXXXXXXX, date → ISO, numeric → real numbers) | ✅ live |
 | Uniqueness | 1 − (duplicate rows ÷ total) | ✅ live |
 | Consistency | share of text cells free of representation noise (alef variants, Hindi numerals, untrimmed whitespace) | ✅ live |
-| Accuracy | reference/range checks | Phase 3+ |
-| Timeliness | records within SLA | Phase 3+ |
+| Accuracy | reference/range checks | not implemented |
+| Timeliness | records within SLA | not implemented |
+
+**An honest note on completeness.** On the demo dataset completeness *falls* from 97% to 94% after cleaning — and that is the system working, not failing. `standardize_nulls` converts disguised placeholders (`-`, `—`, `N/A`, `null`, `غير معروف`, `لا يوجد`, `غير متوفر`) into real empty cells, so gaps that were hiding as text become visible and countable. The overall score still climbs because validity and consistency gain far more than completeness gives up. A cleaner that only ever moved every bar upward would be lying to you.
 
 Column kinds (phone / date / numeric / text) are detected deterministically from name hints + content shape — no LLM involved in scoring. Non-applicable dimensions are dropped and weights renormalized. The optimizer loop stops on: threshold reached, diminishing returns, iteration cap, or regression (best-so-far plan is always kept).
 
@@ -87,7 +89,7 @@ Column kinds (phone / date / numeric / text) are detected deterministically from
 
 - **Human-in-the-loop:** nothing is written without explicit approval; destructive ops approved individually
 - **No data loss:** the uploaded file is never modified — all work happens on copies, so the original is always the way back
-- **Exportable audit log:** every applied transformation recorded (op, column, params, rows affected, real before→after samples, and the model's reason) — the full recipe is replayable on the original file
+- **Exportable audit log:** every applied transformation recorded (op, column, params, rows affected, real before→after samples, and the model's reason) — a complete written record of what ran, exportable as JSON
 - **Privacy by design:** the LLM sees computed profiles and a 5-row sample, never the full dataset — and columns that look like names, phones, emails, national IDs or IBANs (by name *or* by content) are shape-masked before they leave
 
 ## Arabic-First 🇸🇦
@@ -107,7 +109,7 @@ Most data-quality tools break on Arabic. This system is built for it:
 | UI | Streamlit |
 | Agent loop | Python + Gemini API (model-agnostic design — swappable endpoint) |
 | Data engine | pandas (all transformations — deterministic, closed op registry) |
-| Profiling | Custom Arabic-aware profiler (pandas, fully vectorized) |
+| Profiling | Custom Arabic-aware profiler (pandas, mostly vectorized) |
 | Tests | pytest — every reviewed bug is pinned by a test |
 | Deployment | Streamlit Community Cloud |
 
